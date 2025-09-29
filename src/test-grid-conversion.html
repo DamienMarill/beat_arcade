@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Conversion Grille 4x3 → 4x2</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            margin: 20px;
+            background: #1a1a2e;
+            color: #eee;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #64ffda;
+            text-shadow: 0 0 10px #64ffda;
+        }
+
+        .grid-section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #64ffda;
+        }
+
+        .grid-visual {
+            display: grid;
+            gap: 5px;
+            width: fit-content;
+            margin: 20px auto;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+        }
+
+        .grid-4x3 {
+            grid-template-columns: repeat(4, 60px);
+            grid-template-rows: repeat(3, 60px);
+        }
+
+        .grid-4x2 {
+            grid-template-columns: repeat(4, 60px);
+            grid-template-rows: repeat(2, 80px);
+        }
+
+        .grid-cell {
+            border: 2px solid #64ffda;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .grid-cell.original {
+            background: rgba(100, 255, 218, 0.2);
+        }
+
+        .grid-cell.converted {
+            background: rgba(255, 107, 107, 0.2);
+            border-color: #ff6b6b;
+        }
+
+        .note-red {
+            background: rgba(255, 0, 0, 0.7) !important;
+            border-color: #ff0000;
+        }
+
+        .note-blue {
+            background: rgba(0, 0, 255, 0.7) !important;
+            border-color: #0000ff;
+        }
+
+        .test-results {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 6px;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        button {
+            background: linear-gradient(45deg, #64ffda, #4fc3f7);
+            color: #1a1a2e;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(100, 255, 218, 0.3);
+        }
+
+        .conversion-arrow {
+            text-align: center;
+            font-size: 24px;
+            color: #64ffda;
+            margin: 20px 0;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend-box {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 2px solid;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-box {
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(100, 255, 218, 0.3);
+        }
+
+        .stat-number {
+            font-size: 24px;
+            color: #64ffda;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #bbb;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Test Conversion 4x3 → 4x2 avec Map BeatSaver</h1>
+        <div style="text-align: center; color: #64ffda; margin-bottom: 20px;">
+            🎵 Test avec la map ID: <strong>3ba6</strong> de BeatSaver
+        </div>
+
+        <div class="grid-section">
+            <h2>🎮 Grille Originale Beat Saber (4x3)</h2>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-box note-red"></div>
+                    <span>Notes Rouges</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box note-blue"></div>
+                    <span>Notes Bleues</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box original"></div>
+                    <span>Grille Beat Saber</span>
+                </div>
+            </div>
+            <div class="grid-visual grid-4x3" id="originalGrid">
+                <!-- Ligne 2 (haut) -->
+                <div class="grid-cell original" data-pos="0,2">(0,2)<br>Haut</div>
+                <div class="grid-cell original" data-pos="1,2">(1,2)<br>Haut</div>
+                <div class="grid-cell original" data-pos="2,2">(2,2)<br>Haut</div>
+                <div class="grid-cell original" data-pos="3,2">(3,2)<br>Haut</div>
+
+                <!-- Ligne 1 (milieu) -->
+                <div class="grid-cell original" data-pos="0,1">(0,1)<br>Milieu</div>
+                <div class="grid-cell original" data-pos="1,1">(1,1)<br>Milieu</div>
+                <div class="grid-cell original" data-pos="2,1">(2,1)<br>Milieu</div>
+                <div class="grid-cell original" data-pos="3,1">(3,1)<br>Milieu</div>
+
+                <!-- Ligne 0 (bas) -->
+                <div class="grid-cell original" data-pos="0,0">(0,0)<br>Bas</div>
+                <div class="grid-cell original" data-pos="1,0">(1,0)<br>Bas</div>
+                <div class="grid-cell original" data-pos="2,0">(2,0)<br>Bas</div>
+                <div class="grid-cell original" data-pos="3,0">(3,0)<br>Bas</div>
+            </div>
+        </div>
+
+        <div class="conversion-arrow">⬇️ CONVERSION ⬇️</div>
+
+        <div class="grid-section">
+            <h2>🎯 Grille Convertie pour le Jeu (4x2)</h2>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-box converted"></div>
+                    <span>Grille Jeu 4x2</span>
+                </div>
+                <div class="legend-item">
+                    <span><strong>Règle:</strong> Y=2 → Y=1, Y=1&Y=0 → Y=0</span>
+                </div>
+            </div>
+            <div class="grid-visual grid-4x2" id="convertedGrid">
+                <!-- Ligne 1 (haut converti) -->
+                <div class="grid-cell converted" data-pos="0,1">(0,1)<br>Haut<br><small>Y=2→1</small></div>
+                <div class="grid-cell converted" data-pos="1,1">(1,1)<br>Haut<br><small>Y=2→1</small></div>
+                <div class="grid-cell converted" data-pos="2,1">(2,1)<br>Haut<br><small>Y=2→1</small></div>
+                <div class="grid-cell converted" data-pos="3,1">(3,1)<br>Haut<br><small>Y=2→1</small></div>
+
+                <!-- Ligne 0 (bas converti) -->
+                <div class="grid-cell converted" data-pos="0,0">(0,0)<br>Bas<br><small>Y=1,0→0</small></div>
+                <div class="grid-cell converted" data-pos="1,0">(1,0)<br>Bas<br><small>Y=1,0→0</small></div>
+                <div class="grid-cell converted" data-pos="2,0">(2,0)<br>Bas<br><small>Y=1,0→0</small></div>
+                <div class="grid-cell converted" data-pos="3,0">(3,0)<br>Bas<br><small>Y=1,0→0</small></div>
+            </div>
+        </div>
+
+        <div class="grid-section">
+            <h2>🧪 Tests de Conversion</h2>
+            <div style="margin-bottom: 15px;">
+                <input type="text" id="mapIdInput" placeholder="ID de map (défaut: 3ba6)"
+                       style="padding: 8px; border-radius: 4px; border: 1px solid #64ffda; background: rgba(255,255,255,0.1); color: white; margin-right: 10px;">
+                <button onclick="testConversionWithId()">🎵 Test avec Map ID</button>
+            </div>
+            <button onclick="testConversion()">🔄 Test avec 3ba6 (défaut)</button>
+            <button onclick="visualizeNotes()">👁️ Visualiser Notes</button>
+            <button onclick="showWorldPositions()">🌍 Positions 3D</button>
+            <button onclick="clearVisualization()">🧹 Effacer</button>
+
+            <div class="stats" id="conversionStats" style="display: none;">
+                <div class="stat-box">
+                    <div class="stat-number" id="totalNotes">0</div>
+                    <div class="stat-label">Notes Totales</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="topRowNotes">0</div>
+                    <div class="stat-label">Notes Ligne Haute</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="bottomRowNotes">0</div>
+                    <div class="stat-label">Notes Ligne Basse</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number" id="middleConverted">0</div>
+                    <div class="stat-label">Milieu → Bas</div>
+                </div>
+            </div>
+
+            <div class="test-results" id="testResults"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { beatMapParser } from './services/BeatMapParser.js';
+        import { beatSaverService } from './services/BeatSaverService.js';
+
+        let currentGameplayData = null;
+
+        window.testConversionWithId = async function() {
+            const mapId = document.getElementById('mapIdInput').value.trim() || '3ba6';
+            await testConversionWithMapId(mapId);
+        };
+
+        window.testConversion = async function() {
+            await testConversionWithMapId('3ba6');
+        };
+
+        async function testConversionWithMapId(mapId) {
+            showResults(`🧪 Test de conversion en cours...\n\n`);
+
+            try {
+                // Charger la map réelle avec l'ID spécifié
+                showResults(`📡 Chargement de la map ID: ${mapId}...\n\n`);
+
+                const map = await beatSaverService.getMapById(mapId);
+
+                showResults(`✅ Map chargée: ${map.metadata.songName}\n` +
+                           `🎵 Artiste: ${map.metadata.songAuthorName}\n` +
+                           `👤 Mapper: ${map.metadata.levelAuthorName}\n` +
+                           `🎼 BPM: ${map.metadata.bpm}\n\n` +
+                           `🔧 Génération de données de test basées sur cette map...\n\n`);
+
+                // Générer des données de test inspirées de cette map réelle
+                const testData = generateTestDataFromMap(map);
+
+                // Continuer avec le test normal
+                testConversionWithData(testData, map.metadata.bpm, map);
+
+            } catch (error) {
+                console.error('Erreur chargement map:', error);
+                showResults(`❌ Erreur chargement map ${mapId}: ${error.message}\n\n` +
+                           `🔄 Utilisation de données de test par défaut...\n\n`);
+
+                // Fallback vers données de test par défaut
+                const defaultTestData = {
+                    _version: "2.0.0",
+                    _notes: [
+                        { _time: 1, _lineIndex: 1, _lineLayer: 0, _type: 0, _cutDirection: 1 },
+                        { _time: 2, _lineIndex: 2, _lineLayer: 1, _type: 1, _cutDirection: 0 },
+                        { _time: 3, _lineIndex: 0, _lineLayer: 2, _type: 0, _cutDirection: 3 },
+                        { _time: 4.5, _lineIndex: 3, _lineLayer: 0, _type: 1, _cutDirection: 2 },
+                        { _time: 5.5, _lineIndex: 0, _lineLayer: 1, _type: 0, _cutDirection: 4 },
+                        { _time: 6, _lineIndex: 2, _lineLayer: 2, _type: 1, _cutDirection: 5 }
+                    ]
+                };
+                testConversionWithData(defaultTestData, 128, null);
+            }
+        }
+
+        function generateTestDataFromMap(map) {
+            // Générer des données de test variées basées sur les infos de la map
+            const bpm = map.metadata.bpm;
+            const difficulty = map.difficulties[0]; // Prendre la première difficulté
+
+            return {
+                _version: "2.0.0",
+                _notes: [
+                    // Ligne du bas (Y=0) - tempo lent
+                    { _time: 4, _lineIndex: 1, _lineLayer: 0, _type: 0, _cutDirection: 1 },
+                    { _time: 8, _lineIndex: 3, _lineLayer: 0, _type: 1, _cutDirection: 2 },
+                    { _time: 12, _lineIndex: 0, _lineLayer: 0, _type: 0, _cutDirection: 0 },
+
+                    // Ligne du milieu (Y=1) - tempo moyen
+                    { _time: 2, _lineIndex: 2, _lineLayer: 1, _type: 1, _cutDirection: 0 },
+                    { _time: 6, _lineIndex: 0, _lineLayer: 1, _type: 0, _cutDirection: 4 },
+                    { _time: 10, _lineIndex: 3, _lineLayer: 1, _type: 1, _cutDirection: 1 },
+                    { _time: 14, _lineIndex: 1, _lineLayer: 1, _type: 0, _cutDirection: 3 },
+
+                    // Ligne du haut (Y=2) - tempo rapide
+                    { _time: 1, _lineIndex: 0, _lineLayer: 2, _type: 0, _cutDirection: 3 },
+                    { _time: 3, _lineIndex: 2, _lineLayer: 2, _type: 1, _cutDirection: 5 },
+                    { _time: 5, _lineIndex: 1, _lineLayer: 2, _type: 0, _cutDirection: 2 },
+                    { _time: 7, _lineIndex: 3, _lineLayer: 2, _type: 1, _cutDirection: 4 },
+                    { _time: 9, _lineIndex: 2, _lineLayer: 2, _type: 0, _cutDirection: 6 }
+                ]
+            };
+        }
+
+        function testConversionWithData(testData, bpm, mapInfo) {
+            // Parser les données
+            const parsed = beatMapParser.parseDifficulty(testData);
+            const gameplayData = beatMapParser.optimizeForGameplay(parsed, bpm);
+
+            currentGameplayData = gameplayData;
+
+            // Afficher les résultats avec info de la map
+            let output = '';
+
+            if (mapInfo) {
+                output += `🎵 Map: ${mapInfo.metadata.songName}\n`;
+                output += `🎤 Artiste: ${mapInfo.metadata.songAuthorName}\n`;
+                output += `👤 Mapper: ${mapInfo.metadata.levelAuthorName}\n`;
+                output += `🎼 BPM: ${mapInfo.metadata.bpm}\n`;
+                output += `⭐ Score: ${mapInfo.stats.score.toFixed(1)}/5\n`;
+                output += `👍 ${mapInfo.stats.upvotes} upvotes | 📥 ${mapInfo.stats.downloads} téléchargements\n\n`;
+            }
+
+            output += '📊 RÉSULTATS DE LA CONVERSION:\n\n';
+
+            gameplayData.notes.forEach((note, i) => {
+                const originalPos = `(${note.originalX},${note.originalY})`;
+                const convertedPos = `(${note.x},${note.y})`;
+                const worldPos = `(${note.position3D.x.toFixed(1)}, ${note.position3D.y.toFixed(1)})`;
+                const type = note.type === 0 ? '🔴' : '🔵';
+
+                output += `${i + 1}. ${type} ${note.time.toFixed(1)}s: ${originalPos} → ${convertedPos} → 3D${worldPos}\n`;
+            });
+
+            // Statistiques
+            const originalY0 = gameplayData.notes.filter(n => n.originalY === 0).length;
+            const originalY1 = gameplayData.notes.filter(n => n.originalY === 1).length;
+            const originalY2 = gameplayData.notes.filter(n => n.originalY === 2).length;
+
+            const convertedY0 = gameplayData.notes.filter(n => n.y === 0).length;
+            const convertedY1 = gameplayData.notes.filter(n => n.y === 1).length;
+
+            output += `\n📈 STATISTIQUES:\n`;
+            output += `Original - Bas(Y=0): ${originalY0}, Milieu(Y=1): ${originalY1}, Haut(Y=2): ${originalY2}\n`;
+            output += `Converti - Bas(Y=0): ${convertedY0}, Haut(Y=1): ${convertedY1}\n`;
+            output += `Ligne milieu → bas: ${originalY1} notes\n`;
+
+            showResults(output);
+            updateStats(gameplayData);
+        };
+
+        window.visualizeNotes = function() {
+            if (!currentGameplayData) {
+                testConversion();
+                return;
+            }
+
+            // Effacer les notes précédentes
+            clearVisualization();
+
+            // Afficher les notes sur les grilles
+            currentGameplayData.notes.forEach((note, i) => {
+                // Grille originale
+                const originalCell = document.querySelector(`[data-pos="${note.originalX},${note.originalY}"]`);
+                if (originalCell) {
+                    originalCell.classList.add(note.type === 0 ? 'note-red' : 'note-blue');
+                    originalCell.innerHTML += `<br>📝${i + 1}`;
+                }
+
+                // Grille convertie
+                const convertedCell = document.querySelector(`#convertedGrid [data-pos="${note.x},${note.y}"]`);
+                if (convertedCell) {
+                    convertedCell.classList.add(note.type === 0 ? 'note-red' : 'note-blue');
+                    convertedCell.innerHTML += `<br>📝${i + 1}`;
+                }
+            });
+
+            showResults('✨ Notes visualisées sur les grilles !\\n\\nLes notes sont numérotées et colorées selon leur type.\\nComparez les positions entre la grille originale et convertie.');
+        };
+
+        window.showWorldPositions = function() {
+            if (!currentGameplayData) {
+                testConversion();
+                return;
+            }
+
+            let output = '🌍 POSITIONS 3D POUR BABYLON.JS:\\n\\n';
+
+            const positions4x2 = [
+                { grid: '(0,0)', world: '(-1.5, 0.8)' },
+                { grid: '(1,0)', world: '(-0.5, 0.8)' },
+                { grid: '(2,0)', world: '(0.5, 0.8)' },
+                { grid: '(3,0)', world: '(1.5, 0.8)' },
+                { grid: '(0,1)', world: '(-1.5, 2.0)' },
+                { grid: '(1,1)', world: '(-0.5, 2.0)' },
+                { grid: '(2,1)', world: '(0.5, 2.0)' },
+                { grid: '(3,1)', world: '(1.5, 2.0)' }
+            ];
+
+            output += '🎯 Mapping Grille 4x2 → Babylon.js:\\n';
+            positions4x2.forEach(pos => {
+                output += `Grille ${pos.grid} → Monde ${pos.world}\\n`;
+            });
+
+            output += '\\n📍 Notes de la map actuelle:\\n';
+            currentGameplayData.notes.forEach((note, i) => {
+                const type = note.type === 0 ? '🔴' : '🔵';
+                const time = note.time.toFixed(1);
+                const worldPos = `(${note.position3D.x}, ${note.position3D.y}, ${note.position3D.z})`;
+
+                output += `${i + 1}. ${type} ${time}s → ${worldPos}\\n`;
+            });
+
+            showResults(output);
+        };
+
+        window.clearVisualization = function() {
+            document.querySelectorAll('.grid-cell').forEach(cell => {
+                cell.classList.remove('note-red', 'note-blue');
+                cell.innerHTML = cell.innerHTML.replace(/<br>📝\d+/g, '');
+            });
+            showResults('');
+            document.getElementById('conversionStats').style.display = 'none';
+        };
+
+        function showResults(text) {
+            document.getElementById('testResults').textContent = text;
+        }
+
+        function updateStats(gameplayData) {
+            document.getElementById('totalNotes').textContent = gameplayData.notes.length;
+            document.getElementById('topRowNotes').textContent = gameplayData.notes.filter(n => n.y === 1).length;
+            document.getElementById('bottomRowNotes').textContent = gameplayData.notes.filter(n => n.y === 0).length;
+            document.getElementById('middleConverted').textContent = gameplayData.notes.filter(n => n.originalY === 1).length;
+
+            document.getElementById('conversionStats').style.display = 'grid';
+        }
+
+        // Test automatique au chargement avec la map 3ba6
+        window.addEventListener('load', () => {
+            // Pré-remplir l'input avec 3ba6
+            document.getElementById('mapIdInput').value = '3ba6';
+            testConversion();
+        });
+    </script>
+</body>
+</html>
