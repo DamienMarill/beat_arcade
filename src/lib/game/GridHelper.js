@@ -61,7 +61,7 @@ export class GridHelper {
         }
 
         // Ajouter des lignes de délimitation
-        this.addGridLines();
+        // this.addGridLines();
         this.showGrid = true;
     }
 

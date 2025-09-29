@@ -1,0 +1,128 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+/* Configuration DaisyUI avec thèmes personnalisés */
+:root {
+  --animation-btn: 0.25s;
+  --animation-input: 0.2s;
+  --btn-focus-scale: 0.95;
+}
+
+/* Thème Beat Borner personnalisé */
+[data-theme="beatborner"] {
+  --p: 318 100% 58%; /* Primary: violet/magenta */
+  --s: 259 100% 69%; /* Secondary: bleu violet */
+  --a: 194 100% 69%; /* Accent: cyan */
+  --n: 0 0% 15%; /* Neutral: gris foncé */
+  --nc: 0 0% 100%; /* Neutral content: blanc */
+  --b1: 0 0% 5%; /* Base-100: noir profond */
+  --b2: 0 0% 10%; /* Base-200: gris très foncé */
+  --b3: 0 0% 15%; /* Base-300: gris foncé */
+  --bc: 0 0% 100%; /* Base content: blanc */
+  --su: 142 76% 36%; /* Success */
+  --wa: 43 96% 56%; /* Warning */
+  --er: 0 91% 71%; /* Error */
+}
+
+html {
+  @apply h-full;
+}
+
+body {
+  @apply m-0 p-0 bg-base-100 overflow-hidden font-sans h-full;
+}
+
+/* Canvas global styling */
+:global(canvas) {
+  @apply w-full h-screen block;
+}
+
+/* Animations personnalisées */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes spin-smooth {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes bounce-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Utilitaires d'animation personnalisés */
+.animate-fade-in {
+  animation: fadeIn 0.8s ease-in;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite;
+}
+
+.animate-spin-smooth {
+  animation: spin-smooth 1s linear infinite;
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Gradient personnalisés pour Beat Borner */
+.bg-gradient-beat {
+  background: linear-gradient(135deg, hsl(var(--p)) 0%, hsl(var(--s)) 100%);
+}
+
+.bg-gradient-beat-vertical {
+  background: linear-gradient(180deg, hsl(var(--p)) 0%, hsl(var(--s)) 100%);
+}
+
+.bg-gradient-neon {
+  background: linear-gradient(45deg, #ff006e, #8338ec);
+}
+
+/* Effets de néon */
+.text-neon {
+  text-shadow: 0 0 10px hsl(var(--a)), 0 0 20px hsl(var(--a)), 0 0 40px hsl(var(--a));
+}
+
+.shadow-neon {
+  box-shadow: 0 0 15px hsl(var(--a) / 0.5), 0 0 30px hsl(var(--a) / 0.3);
+}
+
+.border-neon {
+  border-color: hsl(var(--a));
+  box-shadow: 0 0 10px hsl(var(--a) / 0.3);
+}

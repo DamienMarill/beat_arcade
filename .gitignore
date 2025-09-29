@@ -9,6 +9,11 @@ pnpm-debug.log*
 dist/
 build/
 
+# SvelteKit
+.svelte-kit/
+.vercel/
+.vite/
+
 # Environment files
 .env
 .env.local
