@@ -32,7 +32,7 @@ class BeatBornerGame {
     createCamera() {
         this.camera = new FreeCamera('camera', new Vector3(0, 2, -10), this.scene);
         this.camera.setTarget(new Vector3(0, 2, 0));
-        this.camera.attachToCanvas(this.canvas, true);
+        this.camera.attachControl(this.canvas, true);
 
         // Empêcher le contrôle manuel de la caméra pour l'arcade
         this.camera.inputs.clear();
@@ -66,12 +66,6 @@ class BeatBornerGame {
         const groundMaterial = new StandardMaterial('groundMat', this.scene);
         groundMaterial.diffuseColor = new Color3(0.2, 0.2, 0.8);
         groundMaterial.emissiveColor = new Color3(0.1, 0.1, 0.3);
-
-        // Créer un motif de damier en UV
-        const groundTexture = new Texture('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAABYSURBVBiVY/z//z8DAwMDw38GBgYGJgYGhv8MDAwMjAwMDP8ZGBgYmBgYGP4zMDAwMDIwMPxnYGBgYGJgYPjPwMDAwMjAwPCfgYGBgYmBgeE/AwMDgyADAwMAGxMKAOr8CQIAAAAASUVORK5CYII=', this.scene);
-        groundTexture.uScale = 4;
-        groundTexture.vScale = 2;
-        groundMaterial.diffuseTexture = groundTexture;
         ground.material = groundMaterial;
 
         segment.meshes.push(ground);
@@ -147,7 +141,7 @@ class BeatBornerGame {
         });
 
         // Animation des matériaux émissifs pour l'effet "pulse"
-        const time = this.engine.getTimeInMilliseconds() * 0.001;
+        const time = performance.now() * 0.001;
         const pulse = Math.sin(time * 3) * 0.2 + 0.8;
 
         this.scene.materials.forEach(material => {
