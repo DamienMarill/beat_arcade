@@ -1,5 +1,21 @@
 <script>
+	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { NavigationManager } from '$lib/ui/NavigationManager.js';
+
+	let navManager;
+
+	onMount(() => {
+		// Créer et activer le manager de navigation
+		navManager = new NavigationManager();
+		navManager.enable('[data-nav-item]');
+	});
+
+	onDestroy(() => {
+		if (navManager) {
+			navManager.dispose();
+		}
+	});
 
 	function navigateToGame() {
 		goto('/game');
@@ -17,6 +33,7 @@
 
 		<div class="flex flex-col gap-6 mb-12">
 			<button
+				data-nav-item
 				class="btn btn-primary btn-lg px-16 py-4 text-xl font-bold rounded-full shadow-neon hover:scale-105 transition-all duration-300 animate-bounce-in"
 				on:click={navigateToGame}
 			>
@@ -24,15 +41,17 @@
 			</button>
 
 			<button
+				data-nav-item
 				class="btn btn-outline btn-secondary btn-lg px-16 py-4 text-xl font-bold rounded-full"
-				disabled
+				on:click={() => alert('Paramètres - En développement')}
 			>
 				⚙️ PARAMÈTRES
 			</button>
 
 			<button
+				data-nav-item
 				class="btn btn-outline btn-accent btn-lg px-16 py-4 text-xl font-bold rounded-full"
-				disabled
+				on:click={() => alert('Scores - En développement')}
 			>
 				🏆 SCORES
 			</button>

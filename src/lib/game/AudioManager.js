@@ -142,6 +142,18 @@ export class AudioManager {
 	}
 
 	/**
+	 * Reprend la lecture audio
+	 */
+	resume() {
+		if (this.gameAudio && this.gameAudio.paused) {
+			this.gameAudio.play().catch((error) => {
+				console.error('❌ Erreur reprise audio:', error);
+			});
+			this.isPlaying = true;
+		}
+	}
+
+	/**
 	 * Arrête l'audio
 	 */
 	stop() {

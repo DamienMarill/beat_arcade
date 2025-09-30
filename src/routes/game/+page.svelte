@@ -4,15 +4,19 @@
 	import LoadingScreen from '$lib/components/LoadingScreen.svelte';
 	import PlayButton from '$lib/components/PlayButton.svelte';
 	import GameUI from '$lib/components/GameUI.svelte';
+	import PauseModal from '$lib/components/PauseModal.svelte';
 	import { BeatBornerGame } from '$lib/game/BeatBornerGame.js';
+	import { NavigationManager } from '$lib/ui/NavigationManager.js';
 
 	let canvas;
 	let game;
+	let navManager;
 
 	// État UI
 	let showLoading = true;
 	let showPlayButton = false;
 	let showGameUI = false;
+	let showPauseModal = false;
 
 	let mapInfo = null;
 	let songName = 'Loading...';
@@ -20,6 +24,16 @@
 	let notesCount = 0;
 
 	onMount(() => {
+		// Créer le manager de navigation (désactivé par défaut)
+		navManager = new NavigationManager();
+
+		// Enregistrer le callback pour le bouton Start (X/N) pendant le jeu
+		navManager.onStart(() => {
+			if (game && game.isPlaying && !showPauseModal) {
+				game.pauseGame();
+			}
+		});
+
 		if (canvas) {
 			// Créer le jeu avec callbacks
 			game = new BeatBornerGame(canvas, {
@@ -34,6 +48,8 @@
 					showLoading = false;
 					showPlayButton = true;
 					notesCount = info.notesCount;
+					// Activer la navigation pour le bouton Play
+					setTimeout(() => navManager.enable('[data-nav-item]'), 100);
 				},
 				onLoadingError: (error) => {
 					console.error('Erreur:', error);
@@ -43,7 +59,19 @@
 				onGameStart: () => {
 					showPlayButton = false;
 					showGameUI = true;
+					// Garder la navigation active pour Start (X/N) mais sans éléments focusables
+					navManager.refresh('[data-nav-item]');
 					startGameTimeUpdate();
+				},
+				onGamePause: () => {
+					showPauseModal = true;
+					// Attendre que la modal soit dans le DOM puis activer la navigation
+					setTimeout(() => navManager.refresh('[data-nav-item]'), 150);
+				},
+				onGameResume: () => {
+					showPauseModal = false;
+					// Remettre la navigation sans éléments focusables (juste pour X/N)
+					navManager.refresh('[data-nav-item]');
 				}
 			});
 
@@ -64,6 +92,9 @@
 		if (gameTimeInterval) {
 			clearInterval(gameTimeInterval);
 		}
+		if (navManager) {
+			navManager.dispose();
+		}
 	});
 
 	function handlePlay() {
@@ -82,7 +113,21 @@
 	}
 
 	function handleBackToMenu() {
+		// Réactiver la navigation avant de quitter
+		if (navManager) {
+			navManager.enable('[data-nav-item]');
+		}
 		goto('/');
+	}
+
+	function handleResume() {
+		if (game) {
+			game.resumeGame();
+		}
+	}
+
+	function handleQuitFromPause() {
+		handleBackToMenu();
 	}
 </script>
 
@@ -92,13 +137,5 @@
 	<LoadingScreen visible={showLoading} {mapInfo} />
 	<PlayButton visible={showPlayButton} onPlay={handlePlay} />
 	<GameUI visible={showGameUI} {songName} {gameTime} {notesCount} />
-
-	{#if showGameUI}
-		<button
-			class="btn btn-accent btn-sm fixed top-5 right-5 z-50 border-neon hover:scale-105 transition-all duration-300"
-			on:click={handleBackToMenu}
-		>
-			⬅️ Menu
-		</button>
-	{/if}
+	<PauseModal visible={showPauseModal} onResume={handleResume} onQuit={handleQuitFromPause} {songName} />
 </div>

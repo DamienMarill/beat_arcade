@@ -283,11 +283,38 @@ export class BeatBornerGame {
 	/**
 	 * Met en pause le jeu
 	 */
+	/**
+	 * Met en pause le jeu
+	 */
 	pauseGame() {
+		if (!this.isPlaying) return;
+		
 		this.isPlaying = false;
 		this.cameraController.stop();
 		this.audioManager.pause();
 		this.inputManager.disable();
+
+		// Callback pour notifier l'UI
+		if (this.callbacks.onGamePause) {
+			this.callbacks.onGamePause();
+		}
+	}
+
+	/**
+	 * Reprend le jeu après une pause
+	 */
+	resumeGame() {
+		if (this.isPlaying) return;
+		
+		this.isPlaying = true;
+		this.cameraController.start();
+		this.audioManager.resume();
+		this.inputManager.enable();
+
+		// Callback pour notifier l'UI
+		if (this.callbacks.onGameResume) {
+			this.callbacks.onGameResume();
+		}
 	}
 
 	/**

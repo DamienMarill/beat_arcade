@@ -126,3 +126,38 @@ body {
   border-color: hsl(var(--a));
   box-shadow: 0 0 10px hsl(var(--a) / 0.3);
 }
+
+/* Navigation clavier arcade - Focus visuel */
+[data-nav-item] {
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+[data-nav-item].nav-focused,
+[data-nav-item][data-nav-focused="true"] {
+  transform: scale(1.1);
+  box-shadow: 0 0 20px hsl(var(--a) / 0.8), 0 0 40px hsl(var(--a) / 0.5), 0 0 60px hsl(var(--a) / 0.3);
+  border: 3px solid hsl(var(--a));
+  z-index: 10;
+}
+
+/* Animation de pulse pour l'élément focusé */
+@keyframes nav-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px hsl(var(--a) / 0.8), 0 0 40px hsl(var(--a) / 0.5);
+  }
+  50% {
+    box-shadow: 0 0 30px hsl(var(--a) / 1), 0 0 60px hsl(var(--a) / 0.7);
+  }
+}
+
+[data-nav-item].nav-focused,
+[data-nav-item][data-nav-focused="true"] {
+  animation: nav-pulse 2s infinite;
+}
+
+/* Indicateur visuel pour navigation désactivée */
+[data-nav-item]:disabled {
+  opacity: 0.5;
+  filter: grayscale(50%);
+}
