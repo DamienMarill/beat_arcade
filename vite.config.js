@@ -7,6 +7,7 @@ export default defineConfig({
 		sveltekit(),
 		tailwindcss()
 	],
+	base: './',
 	server: {
 		port: 3000,
 		open: true,
