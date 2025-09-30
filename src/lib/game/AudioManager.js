@@ -34,17 +34,10 @@ export class AudioManager {
 				audio.volume = 0.2; // Volume faible
 				audio.preload = 'auto';
 
-				// Vérifier le chargement
-				audio.addEventListener('error', (e) => {
-					console.error('❌ Erreur chargement son hit:', e);
-				});
-
 				this.hitSounds.push(audio);
 			}
-
-			console.log('✅ Sons de hit chargés');
 		} catch (error) {
-			console.warn('⚠️ Impossible de charger les sons de hit:', error);
+			console.error('❌ Impossible de charger les sons de hit:', error);
 		}
 	}
 
@@ -73,7 +66,6 @@ export class AudioManager {
 
 				this.gameAudio.addEventListener('loadeddata', () => {
 					clearTimeout(timeout);
-					console.log('✅ Audio chargé');
 					resolve();
 				});
 
@@ -97,7 +89,6 @@ export class AudioManager {
 	startDelayTimer() {
 		this.delayTimerStarted = true;
 		this.delayStartTime = performance.now();
-		console.log(`⏳ Délai de préparation: ${this.audioStartDelay}s avant démarrage musique`);
 	}
 
 	/**
@@ -119,13 +110,11 @@ export class AudioManager {
 	 */
 	async playAudio() {
 		if (!this.gameAudio) {
-			console.warn('⚠️ Aucun audio chargé');
 			return false;
 		}
 
 		try {
 			if (this.gameAudio.readyState < 2) {
-				console.log('⏳ Audio pas prêt, attente...');
 				await new Promise(resolve => setTimeout(resolve, 1000));
 			}
 
@@ -133,7 +122,6 @@ export class AudioManager {
 
 			if (playPromise !== undefined) {
 				await playPromise;
-				console.log(`🎵 MUSIQUE DÉMARRÉE - Timestamp: ${performance.now().toFixed(2)}ms`);
 				this.isPlaying = true;
 				return true;
 			}
@@ -201,7 +189,6 @@ export class AudioManager {
 	 */
 	setAudioOffset(offsetSeconds) {
 		this.audioOffset = offsetSeconds;
-		console.log(`🎚️ Audio offset: ${offsetSeconds > 0 ? '+' : ''}${offsetSeconds.toFixed(3)}s`);
 	}
 
 	/**
@@ -232,11 +219,11 @@ export class AudioManager {
 
 			// Rejouer depuis le début
 			sound.currentTime = 0;
-			sound.play().catch(err => {
+			sound.play().catch(() => {
 				// Ignorer les erreurs silencieusement (souvent dues à l'autoplay policy)
 			});
 		} catch (error) {
-			console.warn('⚠️ Impossible de jouer le son de hit:', error);
+			// Ignorer silencieusement
 		}
 	}
 

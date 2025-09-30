@@ -88,8 +88,6 @@ export class BeatBornerGame {
 				if (this.callbacks.onNoteHit) {
 					this.callbacks.onNoteHit({ x, y, key });
 				}
-			} else {
-				console.log(`❌ MISS - Aucune note à (${x}, ${y}) avec touche [${key.toUpperCase()}]`);
 			}
 		});
 	}
@@ -126,8 +124,6 @@ export class BeatBornerGame {
 	 */
 	async loadBeatSaverMap(mapId) {
 		try {
-			console.log(`🎵 Chargement de la map ${mapId}...`);
-
 			// Callback de début de chargement
 			if (this.callbacks.onLoadingStart) {
 				this.callbacks.onLoadingStart();
@@ -135,8 +131,6 @@ export class BeatBornerGame {
 
 			// Récupérer les infos
 			this.currentMap = await beatSaverService.getMapById(mapId);
-
-			console.log(`✅ Map: ${this.currentMap.metadata.songName}`);
 
 			// Callback avec les infos de la map
 			if (this.callbacks.onMapInfoLoaded) {
@@ -164,15 +158,12 @@ export class BeatBornerGame {
 			// Extraire le songTimeOffset (en MILLISECONDES dans le fichier)
 			const songTimeOffsetMs = infoData._songTimeOffset || 0;
 			const songTimeOffsetSeconds = songTimeOffsetMs / 1000;
-			console.log(`⏱️ songTimeOffset: ${songTimeOffsetMs}ms (${songTimeOffsetSeconds.toFixed(3)}s)`);
 
 			// Charger la première difficulté
 			const firstDifficultySet = infoData._difficultyBeatmapSets?.[0];
 			const firstDifficulty = firstDifficultySet?._difficultyBeatmaps?.[0];
 
 			if (!firstDifficulty) throw new Error('Aucune difficulté trouvée');
-
-			console.log(`🎮 Difficulté: ${firstDifficulty._difficulty}`);
 
 			const difficultyFile = zipFiles.file(firstDifficulty._beatmapFilename);
 			if (!difficultyFile) throw new Error(`Fichier ${firstDifficulty._beatmapFilename} introuvable`);
@@ -184,24 +175,6 @@ export class BeatBornerGame {
 
 			this.gameplayData = beatMapParser.optimizeForGameplay(parsedData, this.currentMap.metadata.bpm);
 
-			// DEBUG: Afficher les données si activé
-			if (GameConfig.enableDebugLogs) {
-				console.log('📊 DONNÉES BRUTES - premières notes:');
-				const rawNotes = parsedData.notes || parsedData.colorNotes || [];
-				rawNotes.slice(0, GameConfig.debugNotesCount).forEach((note, i) => {
-					const time = note.time || note.beat || note.b;
-					console.log(`   Note ${i}: time=${time} beats | x=${note.lineIndex || note.x} | y=${note.lineLayer || note.y}`);
-				});
-
-				console.log('📊 DONNÉES CONVERTIES - premières notes:');
-				console.log(`   BPM: ${this.currentMap.metadata.bpm} | Secondes par beat: ${60 / this.currentMap.metadata.bpm}`);
-				this.gameplayData.notes.slice(0, GameConfig.debugNotesCount).forEach((note, i) => {
-					console.log(`   Note ${i}: time=${note.time.toFixed(3)}s | x=${note.x} | y=${note.y} | pos3D=(${note.position3D.x}, ${note.position3D.y})`);
-				});
-			}
-
-			console.log(`🎯 ${this.gameplayData.notes.length} notes`);
-
 			// Charger l'audio
 			await this.loadAudioFromZip(zipFiles);
 
@@ -211,7 +184,6 @@ export class BeatBornerGame {
 			// Appliquer l'offset de la map automatiquement
 			if (songTimeOffsetSeconds !== 0) {
 				this.audioManager.setAudioOffset(songTimeOffsetSeconds);
-				console.log(`✅ Offset audio de la map appliqué: ${songTimeOffsetSeconds.toFixed(3)}s`);
 			}
 
 			// Callback de fin de chargement
@@ -261,7 +233,6 @@ export class BeatBornerGame {
 
 			// Fallback vers preview
 			if (!audioFile) {
-				console.log('⚠️ Audio non trouvé, utilisation preview...');
 				if (this.currentMap?.version.previewUrl) {
 					await this.audioManager.loadAudio(this.currentMap.version.previewUrl);
 				}
@@ -287,8 +258,6 @@ export class BeatBornerGame {
 	 */
 	async startGame() {
 		this.startTime = performance.now();
-		console.log(`🚀 GAME START - Timestamp: ${this.startTime.toFixed(2)}ms`);
-
 		this.isPlaying = true;
 
 		// Activer la caméra
@@ -354,9 +323,6 @@ export class BeatBornerGame {
 	setAudioOffset(offsetMs) {
 		const offsetSeconds = offsetMs / 1000;
 		this.audioManager.setAudioOffset(offsetSeconds);
-		console.log(`🎚️ Offset configuré: ${offsetMs}ms (${offsetSeconds.toFixed(3)}s)`);
-		console.log(`   > Positif = notes trop tôt (ralentir)`);
-		console.log(`   > Négatif = notes trop tard (accélérer)`);
 	}
 
 	/**

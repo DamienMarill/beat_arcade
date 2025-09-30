@@ -27,7 +27,6 @@ export class InputManager {
 		window.addEventListener('keydown', this.handleKeyDown);
 		window.addEventListener('keyup', this.handleKeyUp);
 		this.isEnabled = true;
-		console.log('⌨️ InputManager activé');
 	}
 
 	/**
@@ -40,7 +39,6 @@ export class InputManager {
 		window.removeEventListener('keyup', this.handleKeyUp);
 		this.activeKeys.clear();
 		this.isEnabled = false;
-		console.log('⌨️ InputManager désactivé');
 	}
 
 	/**

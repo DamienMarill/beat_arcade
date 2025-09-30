@@ -70,7 +70,7 @@ export class GridHelper {
     }
 
     /**
-     * Anime un carré de la grille (pulse effect)
+     * Anime un carré de la grille (pulse effect avec états fixes)
      */
     pulseGridSquare(gridX, gridY) {
         // Trouver le mesh correspondant
@@ -80,41 +80,29 @@ export class GridHelper {
 
         if (!gridMesh) return;
 
-        // Animation de pulse (scale 1 → 1.3 → 1)
-        import('@babylonjs/core').then(({ Animation, EasingFunction, CubicEase }) => {
-            const scaleAnimation = new Animation(
-                'gridPulse',
-                'scaling',
-                60,
-                Animation.ANIMATIONTYPE_VECTOR3,
-                Animation.ANIMATIONLOOPMODE_CONSTANT
-            );
+        // Annuler toute animation en cours sur ce mesh
+        this.scene.stopAnimation(gridMesh);
 
-            const keys = [
-                { frame: 0, value: gridMesh.scaling.clone() },
-                { frame: 10, value: gridMesh.scaling.clone().scale(1.3) },
-                { frame: 20, value: gridMesh.scaling.clone() }
-            ];
+        // Tailles fixes
+        const normalScale = 1.0;
+        const pressedScale = 1.3;
 
-            scaleAnimation.setKeys(keys);
+        // Passer à l'état "pressé" immédiatement
+        gridMesh.scaling.setAll(pressedScale);
 
-            // Easing pour effet smooth
-            const easingFunction = new CubicEase();
-            easingFunction.setEasingMode(EasingFunction.EASINGMODE_EASEINOUT);
-            scaleAnimation.setEasingFunction(easingFunction);
+        // Effet de lumière temporaire
+        const originalIntensity = gridMesh.material.emissiveIntensity || 1;
+        gridMesh.material.emissiveIntensity = 2.0;
 
-            // Lancer l'animation
-            this.scene.beginDirectAnimation(gridMesh, [scaleAnimation], 0, 20, false);
-
-            // Effet de lumière temporaire
-            const originalIntensity = gridMesh.material.emissiveIntensity || 1;
-            gridMesh.material.emissiveIntensity = 2.0;
-            setTimeout(() => {
+        // Retour à l'état normal après 150ms
+        setTimeout(() => {
+            if (gridMesh) {
+                gridMesh.scaling.setAll(normalScale);
                 if (gridMesh.material) {
                     gridMesh.material.emissiveIntensity = originalIntensity;
                 }
-            }, 200);
-        });
+            }
+        }, 150);
     }
 
     /**
@@ -191,10 +179,6 @@ export class GridHelper {
             }
         });
 
-        // Debug occasionnel
-        if (Math.floor(this.camera.position.z) % 10 === 0) {
-            console.log(`🎯 Grille mise à jour: caméra=${this.camera.position.z.toFixed(1)}, grille=${newGridZ.toFixed(1)}`);
-        }
     }
 
     /**
@@ -226,7 +210,6 @@ export class GridHelper {
     gridToWorldPosition(gridX, gridY) {
         if (gridX < 0 || gridX >= this.gridConfig.columns ||
             gridY < 0 || gridY >= this.gridConfig.rows) {
-            console.warn(`Position grille invalide: (${gridX}, ${gridY})`);
             return { x: 0, y: 1.4, z: 0 }; // Position par défaut
         }
 
@@ -305,15 +288,7 @@ export class GridHelper {
      * Affiche des informations de debug sur la grille
      */
     logGridInfo() {
-        console.log('🎯 Configuration Grille 4x2:');
-        console.log(`Colonnes: ${this.gridConfig.columns} (X: ${this.gridConfig.positions.x.join(', ')})`);
-        console.log(`Lignes: ${this.gridConfig.rows} (Y: ${this.gridConfig.positions.y.join(', ')})`);
-        console.log('');
-
-        console.log('📍 Positions disponibles:');
-        this.getAllGridPositions().forEach(pos => {
-            console.log(`Grille (${pos.gridX},${pos.gridY}) → Monde (${pos.worldPos.x}, ${pos.worldPos.y}, ${pos.worldPos.z})`);
-        });
+        // Méthode de debug (désactivée en production)
     }
 
     /**

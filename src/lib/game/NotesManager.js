@@ -44,8 +44,6 @@ export class NotesManager {
 	createNotesFromGameplayData() {
 		if (!this.gameplayData) return;
 
-		console.log(`🏗️ Création de ${this.gameplayData.notes.length} notes...`);
-
 		this.gameplayData.notes.forEach((noteData, index) => {
 			const note = this.createNote(noteData, index);
 
@@ -70,7 +68,6 @@ export class NotesManager {
 
 		// Trier par temps
 		this.notes.sort((a, b) => a.data.time - b.data.time);
-		console.log(`✅ ${this.notes.length} notes créées`);
 	}
 
 	/**
@@ -174,14 +171,6 @@ export class NotesManager {
 
 		// Désactiver immédiatement la note
 		mesh.setEnabled(false);
-
-		// Calculer le timing (perfect/good/ok)
-		const timingMs = Math.abs(timeOffset * 1000);
-		let timing = 'OK';
-		if (timingMs < 50) timing = 'PERFECT';
-		else if (timingMs < 100) timing = 'GOOD';
-
-		console.log(`✅ HIT ${timing} - Grid(${gridX},${gridY}) | Pos3D: (${particlePosition.x.toFixed(1)}, ${particlePosition.y.toFixed(1)}, ${particlePosition.z.toFixed(1)})`);
 	}
 
 	/**
@@ -243,8 +232,6 @@ export class NotesManager {
 
 		// Démarrer !
 		particleSystem.start();
-
-		console.log(`💥 ParticleSystem créé à la position (${position.x}, ${position.y}, ${position.z})`);
 	}
 
 	/**
@@ -267,16 +254,6 @@ export class NotesManager {
 				mesh.setEnabled(true);
 				noteObj.spawned = true;
 				noteObj.isVisible = true;
-
-				// Log première note
-				if (!this.firstNoteShown) {
-					this.firstNoteShown = true;
-					const rawTime = this.audioManager.getRawCurrentTime();
-					const offset = this.audioManager.getAudioOffset();
-					console.log(`🎵 PREMIÈRE NOTE SPAWN`);
-					console.log(`   Audio brut: ${rawTime.toFixed(3)}s | Offset: ${offset > 0 ? '+' : ''}${offset.toFixed(3)}s | Audio final: ${currentAudioTime.toFixed(3)}s`);
-					console.log(`   Note temps: ${noteTime.toFixed(3)}s | Lookahead: ${timeUntilHit.toFixed(3)}s`);
-				}
 			}
 
 			// Mettre à jour la position de la note visible
@@ -313,12 +290,6 @@ export class NotesManager {
 					if (mesh.material) {
 						mesh.material.emissiveIntensity = 1.0;
 					}
-
-					// Log pour debug synchro
-					if (!noteObj.hitWindowLogged) {
-						noteObj.hitWindowLogged = true;
-						console.log(`🎯 NOTE EN ZONE FRAPPE - Audio: ${currentAudioTime.toFixed(3)}s | Note attendue: ${noteTime.toFixed(3)}s | Delta: ${(currentAudioTime - noteTime).toFixed(3)}s`);
-					}
 				}
 
 				// Note manquée
@@ -326,20 +297,10 @@ export class NotesManager {
 					mesh.setEnabled(false);
 					noteObj.missed = true;
 					noteObj.isVisible = false;
-					console.log(`❌ Note manquée: ${noteTime.toFixed(2)}s (audio: ${currentAudioTime.toFixed(2)}s)`);
 				}
 			}
 		});
 
-		// Log périodique
-		const currentTimeSeconds = Math.floor(currentAudioTime);
-		if (currentTimeSeconds !== this.lastLogTime && currentAudioTime > 0) {
-			this.lastLogTime = currentTimeSeconds;
-			const visibleNotes = this.notes.filter(n => n.isVisible && !n.hit && !n.missed).length;
-			const totalHit = this.notes.filter(n => n.hit).length;
-			const totalMissed = this.notes.filter(n => n.missed).length;
-			console.log(`🎯 Audio: ${currentAudioTime.toFixed(1)}s | Visible: ${visibleNotes} | Hit: ${totalHit} | Missed: ${totalMissed}`);
-		}
 	}
 
 	/**
