@@ -5,10 +5,11 @@
 	import PlayButton from '$lib/components/PlayButton.svelte';
 	import GameUI from '$lib/components/GameUI.svelte';
 	import PauseModal from '$lib/components/PauseModal.svelte';
+	import MapSelector from '$lib/components/MapSelector.svelte';
 	import { BeatBornerGame } from '$lib/game/BeatBornerGame.js';
 
 	// États de l'application
-	let currentScreen = 'menu'; // 'menu' | 'game'
+	let currentScreen = 'menu'; // 'menu' | 'game' (mapSelection est une modal dans game)
 
 	// Navigation
 	let navManager;
@@ -16,6 +17,7 @@
 	// Game
 	let canvas;
 	let game;
+	let selectedMap = null;
 	let showLoading = false;
 	let showPlayButton = false;
 	let showGameUI = false;
@@ -53,18 +55,62 @@
 		}
 	});
 
-	function navigateToGame() {
-		currentScreen = 'game';
+	let showMapSelector = false;
 
-		// Désactiver temporairement la navigation pendant le changement
+	function navigateToMapSelection() {
+		// Aller sur l'écran de jeu (tunnel 3D) puis afficher la modal
+		currentScreen = 'game';
 		navManager.disable();
 
-		// Initialiser le jeu après que le canvas soit dans le DOM
+		// Initialiser le jeu d'abord (tunnel 3D)
 		setTimeout(() => {
 			if (canvas && !game) {
-				initGame();
+				initGameWithoutMap();
+			}
+			// Puis afficher le sélecteur après initialisation
+			setTimeout(() => {
+				showMapSelector = true;
+			}, 100);
+		}, 100);
+	}
+
+	async function initGameWithoutMap() {
+		// Initialiser seulement la scène 3D sans charger de map
+		const { SceneManager } = await import('$lib/game/SceneManager.js');
+		const { CameraController } = await import('$lib/game/CameraController.js');
+		const { TunnelGenerator } = await import('$lib/game/TunnelGenerator.js');
+		const { LightingManager } = await import('$lib/game/LightingManager.js');
+
+		const sceneManager = new SceneManager(canvas);
+		const scene = sceneManager.getScene();
+		const cameraController = new CameraController(scene);
+		const lightingManager = new LightingManager(scene);
+		const tunnelGenerator = new TunnelGenerator(scene, cameraController);
+
+		// Démarrer l'animation du tunnel
+		cameraController.start();
+		sceneManager.registerBeforeRender(() => {
+			cameraController.update();
+			tunnelGenerator.update();
+			tunnelGenerator.updateMaterialsAnimation();
+		});
+	}
+
+	function handleMapSelected(map) {
+		selectedMap = map;
+		showMapSelector = false;
+
+		// Charger la map et démarrer directement le jeu
+		setTimeout(() => {
+			if (!game) {
+				initGameAndStart();
 			}
 		}, 100);
+	}
+
+	function handleCancelMapSelection() {
+		showMapSelector = false;
+		navigateToMenu();
 	}
 
 	function navigateToMenu() {
@@ -93,7 +139,10 @@
 		}, 100);
 	}
 
-	function initGame() {
+	async function initGameAndStart() {
+		// Charger la map sélectionnée
+		const mapId = selectedMap?.id || '3ba6'; // Fallback sur la map par défaut
+
 		game = new BeatBornerGame(canvas, {
 			onLoadingStart: () => {
 				showLoading = true;
@@ -104,10 +153,13 @@
 			},
 			onLoadingComplete: (info) => {
 				showLoading = false;
-				showPlayButton = true;
 				notesCount = info.notesCount;
-				// Activer la navigation pour le bouton Play
-				setTimeout(() => navManager.enable('[data-nav-item]'), 100);
+				// Démarrer automatiquement le jeu
+				setTimeout(() => {
+					if (game) {
+						game.startGame();
+					}
+				}, 500);
 			},
 			onLoadingError: (error) => {
 				console.error('Erreur:', error);
@@ -131,7 +183,7 @@
 				// Désactiver la navigation, retour au jeu
 				navManager.disable();
 			}
-		});
+		}, mapId);
 
 		// Exposer game globalement pour calibration via console
 		if (typeof window !== 'undefined') {
@@ -191,7 +243,7 @@
 				<button
 					data-nav-item
 					class="btn btn-primary btn-lg px-16 py-4 text-xl font-bold rounded-full shadow-neon hover:scale-105 transition-all duration-300 animate-bounce-in"
-					on:click={navigateToGame}
+					on:click={navigateToMapSelection}
 				>
 					▶️ JOUER
 				</button>
@@ -222,6 +274,13 @@
 	<!-- Écran de jeu -->
 	<div data-theme="beatborner" class="w-screen h-screen relative overflow-hidden">
 		<canvas bind:this={canvas} id="gameCanvas" class="w-full h-full block"></canvas>
+
+		<!-- Modal de sélection de musique (par-dessus la 3D) -->
+		<MapSelector
+			visible={showMapSelector}
+			onSelectMap={handleMapSelected}
+			onCancel={handleCancelMapSelection}
+		/>
 
 		<LoadingScreen visible={showLoading} {mapInfo} />
 		<PlayButton visible={showPlayButton} onPlay={handlePlay} />

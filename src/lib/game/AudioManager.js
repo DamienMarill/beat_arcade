@@ -25,12 +25,16 @@ export class AudioManager {
 		try {
 			// Sample de percussion depuis freesound.org
 			// Credit: freakrush - https://freesound.org/people/freakrush/sounds/43370/
-			// URL du preview MP3 (format standard Freesound)
 			const soundUrl = '/audio/43370__freakrush__bassdrumsoft1.wav';
+
+			// Charger une fois avec fetch pour éviter les problèmes de cache
+			const response = await fetch(soundUrl);
+			const audioBlob = await response.blob();
+			const audioBlobUrl = URL.createObjectURL(audioBlob);
 
 			// Créer 5 instances pour permettre des hits rapides
 			for (let i = 0; i < 5; i++) {
-				const audio = new Audio(soundUrl);
+				const audio = new Audio(audioBlobUrl);
 				audio.volume = 0.2; // Volume faible
 				audio.preload = 'auto';
 

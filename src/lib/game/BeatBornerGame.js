@@ -16,9 +16,10 @@ import JSZip from 'jszip';
  * Orchestre tous les managers et composants
  */
 export class BeatBornerGame {
-	constructor(canvas, callbacks = {}) {
+	constructor(canvas, callbacks = {}, mapId = '3ba6') {
 		this.canvas = canvas;
 		this.callbacks = callbacks;
+		this.mapId = mapId;
 
 		// Managers
 		this.sceneManager = null;
@@ -39,6 +40,9 @@ export class BeatBornerGame {
 		this.init();
 	}
 
+	/**
+	 * Initialise le jeu
+	 */
 	/**
 	 * Initialise le jeu
 	 */
@@ -64,8 +68,8 @@ export class BeatBornerGame {
 		// Enregistrer la boucle de mise à jour
 		this.sceneManager.registerBeforeRender(() => this.update());
 
-		// Charger la map
-		await this.loadBeatSaverMap('3ba6');
+		// Charger la map sélectionnée
+		await this.loadBeatSaverMap(this.mapId);
 	}
 
 	/**
