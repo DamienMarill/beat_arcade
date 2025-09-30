@@ -31,7 +31,13 @@
       "mcp__chrome-devtools__take_snapshot",
       "mcp__chrome-devtools__click",
       "mcp__chrome-devtools__wait_for",
-      "mcp__chrome-devtools__evaluate_script"
+      "mcp__chrome-devtools__evaluate_script",
+      "WebFetch(domain:freesound.org)",
+      "mcp__serena__create_text_file",
+      "mcp__serena__activate_project",
+      "mcp__serena__replace_symbol_body",
+      "mcp__serena__insert_after_symbol",
+      "mcp__serena__search_for_pattern"
     ],
     "deny": [],
     "ask": []

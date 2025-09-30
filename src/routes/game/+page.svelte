@@ -34,6 +34,9 @@
 			}
 		});
 
+		// Ajouter un listener direct pour X/N pendant le jeu (sans passer par la navigation)
+		window.addEventListener('keydown', handleGamePauseKey);
+
 		if (canvas) {
 			// Créer le jeu avec callbacks
 			game = new BeatBornerGame(canvas, {
@@ -59,19 +62,19 @@
 				onGameStart: () => {
 					showPlayButton = false;
 					showGameUI = true;
-					// Garder la navigation active pour Start (X/N) mais sans éléments focusables
-					navManager.refresh('[data-nav-item]');
+					// DÉSACTIVER complètement la navigation pendant le jeu
+					navManager.disable();
 					startGameTimeUpdate();
 				},
 				onGamePause: () => {
 					showPauseModal = true;
-					// Attendre que la modal soit dans le DOM puis activer la navigation
-					setTimeout(() => navManager.refresh('[data-nav-item]'), 150);
+					// Activer la navigation pour la modal de pause
+					setTimeout(() => navManager.enable('[data-nav-item]'), 150);
 				},
 				onGameResume: () => {
 					showPauseModal = false;
-					// Remettre la navigation sans éléments focusables (juste pour X/N)
-					navManager.refresh('[data-nav-item]');
+					// Désactiver la navigation, retour au jeu
+					navManager.disable();
 				}
 			});
 
@@ -95,6 +98,7 @@
 		if (navManager) {
 			navManager.dispose();
 		}
+		window.removeEventListener('keydown', handleGamePauseKey);
 	});
 
 	function handlePlay() {
@@ -128,6 +132,15 @@
 
 	function handleQuitFromPause() {
 		handleBackToMenu();
+	}
+
+	function handleGamePauseKey(event) {
+		const key = event.key.toLowerCase();
+		// X ou N pour pause uniquement pendant le jeu actif
+		if ((key === 'x' || key === 'n') && game && game.isPlaying && !showPauseModal) {
+			event.preventDefault();
+			game.pauseGame();
+		}
 	}
 </script>
 
