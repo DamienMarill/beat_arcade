@@ -152,6 +152,29 @@ export const GameConfig = {
 	noteRotationSpeed: 30,
 
 	// ═══════════════════════════════════════════════════
+	// CONTRÔLES
+	// ═══════════════════════════════════════════════════
+
+	/**
+	 * Mapping des touches pour la grille 4×2
+	 * Ligne du haut (row 1): R T I O (colonnes 0-3)
+	 * Ligne du bas (row 0): F G K L (colonnes 0-3)
+	 */
+	keyBindings: {
+		// Ligne du bas (y = 0)
+		'f': { x: 0, y: 0 },  // Colonne gauche, ligne basse
+		'g': { x: 1, y: 0 },  // Colonne centre-gauche, ligne basse
+		'k': { x: 2, y: 0 },  // Colonne centre-droite, ligne basse
+		'l': { x: 3, y: 0 },  // Colonne droite, ligne basse
+
+		// Ligne du haut (y = 1)
+		'r': { x: 0, y: 1 },  // Colonne gauche, ligne haute
+		't': { x: 1, y: 1 },  // Colonne centre-gauche, ligne haute
+		'i': { x: 2, y: 1 },  // Colonne centre-droite, ligne haute
+		'o': { x: 3, y: 1 }   // Colonne droite, ligne haute
+	},
+
+	// ═══════════════════════════════════════════════════
 	// DEBUG
 	// ═══════════════════════════════════════════════════
 

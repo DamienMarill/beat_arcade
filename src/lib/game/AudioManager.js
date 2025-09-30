@@ -11,6 +11,41 @@ export class AudioManager {
 		this.audioStartDelay = GameConfig.audioStartDelay;
 		this.delayTimerStarted = false;
 		this.delayStartTime = 0;
+
+		// Son de hit
+		this.hitSounds = [];
+		this.currentSoundIndex = 0;
+		this.loadHitSounds();
+	}
+
+	/**
+	 * Charge plusieurs instances du son de hit pour éviter les coupures
+	 */
+	async loadHitSounds() {
+		try {
+			// Sample de percussion depuis freesound.org
+			// Credit: freakrush - https://freesound.org/people/freakrush/sounds/43370/
+			// URL du preview MP3 (format standard Freesound)
+			const soundUrl = '/audio/43370__freakrush__bassdrumsoft1.wav';
+
+			// Créer 5 instances pour permettre des hits rapides
+			for (let i = 0; i < 5; i++) {
+				const audio = new Audio(soundUrl);
+				audio.volume = 0.2; // Volume faible
+				audio.preload = 'auto';
+
+				// Vérifier le chargement
+				audio.addEventListener('error', (e) => {
+					console.error('❌ Erreur chargement son hit:', e);
+				});
+
+				this.hitSounds.push(audio);
+			}
+
+			console.log('✅ Sons de hit chargés');
+		} catch (error) {
+			console.warn('⚠️ Impossible de charger les sons de hit:', error);
+		}
 	}
 
 	/**
@@ -185,6 +220,27 @@ export class AudioManager {
 	}
 
 	/**
+	 * Joue le son de hit (sample de grosse caisse)
+	 */
+	playHitSound() {
+		if (this.hitSounds.length === 0) return;
+
+		try {
+			// Utiliser le prochain son disponible (rotation pour éviter les coupures)
+			const sound = this.hitSounds[this.currentSoundIndex];
+			this.currentSoundIndex = (this.currentSoundIndex + 1) % this.hitSounds.length;
+
+			// Rejouer depuis le début
+			sound.currentTime = 0;
+			sound.play().catch(err => {
+				// Ignorer les erreurs silencieusement (souvent dues à l'autoplay policy)
+			});
+		} catch (error) {
+			console.warn('⚠️ Impossible de jouer le son de hit:', error);
+		}
+	}
+
+	/**
 	 * Nettoie les ressources
 	 */
 	dispose() {
@@ -192,5 +248,6 @@ export class AudioManager {
 			this.stop();
 			this.gameAudio = null;
 		}
+		this.hitSounds = [];
 	}
 }

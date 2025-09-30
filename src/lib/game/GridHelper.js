@@ -56,6 +56,10 @@ export class GridHelper {
                 );
 
                 guide.material = guideMaterial;
+
+                // Stocker la position pour référence
+                guide.metadata = { gridX: x, gridY: y };
+
                 this.gridMeshes.push(guide);
             }
         }
@@ -63,6 +67,54 @@ export class GridHelper {
         // Ajouter des lignes de délimitation
         // this.addGridLines();
         this.showGrid = true;
+    }
+
+    /**
+     * Anime un carré de la grille (pulse effect)
+     */
+    pulseGridSquare(gridX, gridY) {
+        // Trouver le mesh correspondant
+        const gridMesh = this.gridMeshes.find(mesh =>
+            mesh.metadata && mesh.metadata.gridX === gridX && mesh.metadata.gridY === gridY
+        );
+
+        if (!gridMesh) return;
+
+        // Animation de pulse (scale 1 → 1.3 → 1)
+        import('@babylonjs/core').then(({ Animation, EasingFunction, CubicEase }) => {
+            const scaleAnimation = new Animation(
+                'gridPulse',
+                'scaling',
+                60,
+                Animation.ANIMATIONTYPE_VECTOR3,
+                Animation.ANIMATIONLOOPMODE_CONSTANT
+            );
+
+            const keys = [
+                { frame: 0, value: gridMesh.scaling.clone() },
+                { frame: 10, value: gridMesh.scaling.clone().scale(1.3) },
+                { frame: 20, value: gridMesh.scaling.clone() }
+            ];
+
+            scaleAnimation.setKeys(keys);
+
+            // Easing pour effet smooth
+            const easingFunction = new CubicEase();
+            easingFunction.setEasingMode(EasingFunction.EASINGMODE_EASEINOUT);
+            scaleAnimation.setEasingFunction(easingFunction);
+
+            // Lancer l'animation
+            this.scene.beginDirectAnimation(gridMesh, [scaleAnimation], 0, 20, false);
+
+            // Effet de lumière temporaire
+            const originalIntensity = gridMesh.material.emissiveIntensity || 1;
+            gridMesh.material.emissiveIntensity = 2.0;
+            setTimeout(() => {
+                if (gridMesh.material) {
+                    gridMesh.material.emissiveIntensity = originalIntensity;
+                }
+            }, 200);
+        });
     }
 
     /**

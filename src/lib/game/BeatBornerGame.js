@@ -4,6 +4,7 @@ import { TunnelGenerator } from './TunnelGenerator.js';
 import { NotesManager } from './NotesManager.js';
 import { AudioManager } from './AudioManager.js';
 import { LightingManager } from './LightingManager.js';
+import { InputManager } from './InputManager.js';
 import GridHelper from './GridHelper.js';
 import { GameConfig } from './GameConfig.js';
 import { beatSaverService } from '../../services/BeatSaverService.js';
@@ -26,6 +27,7 @@ export class BeatBornerGame {
 		this.notesManager = null;
 		this.audioManager = null;
 		this.lightingManager = null;
+		this.inputManager = null;
 		this.gridHelper = null;
 
 		// État du jeu
@@ -51,15 +53,45 @@ export class BeatBornerGame {
 		this.tunnelGenerator = new TunnelGenerator(scene, this.cameraController);
 		this.audioManager = new AudioManager();
 		this.notesManager = new NotesManager(scene, this.cameraController, this.audioManager);
+		this.inputManager = new InputManager();
 
 		// Initialiser le helper de grille
 		this.gridHelper = new GridHelper(scene, this.cameraController.getCamera());
+
+		// Connecter les inputs aux notes
+		this.setupInputHandling();
 
 		// Enregistrer la boucle de mise à jour
 		this.sceneManager.registerBeforeRender(() => this.update());
 
 		// Charger la map
 		await this.loadBeatSaverMap('3ba6');
+	}
+
+	/**
+	 * Configure la gestion des inputs
+	 */
+	setupInputHandling() {
+		this.inputManager.onKeyPress((x, y, key) => {
+			// Animer le carré de la grille
+			if (this.gridHelper) {
+				this.gridHelper.pulseGridSquare(x, y);
+			}
+
+			if (!this.isPlaying || !this.gameplayData) return;
+
+			// Tenter de frapper une note
+			const hit = this.notesManager.tryHitNote(x, y);
+
+			if (hit) {
+				// Callback optionnel pour l'UI
+				if (this.callbacks.onNoteHit) {
+					this.callbacks.onNoteHit({ x, y, key });
+				}
+			} else {
+				console.log(`❌ MISS - Aucune note à (${x}, ${y}) avec touche [${key.toUpperCase()}]`);
+			}
+		});
 	}
 
 	/**
@@ -262,6 +294,9 @@ export class BeatBornerGame {
 		// Activer la caméra
 		this.cameraController.start();
 
+		// Activer les inputs clavier
+		this.inputManager.enable();
+
 		// Afficher la grille si activé dans config
 		if (GameConfig.showGridGuides) {
 			this.gridHelper.showGridGuides();
@@ -283,6 +318,7 @@ export class BeatBornerGame {
 		this.isPlaying = false;
 		this.cameraController.stop();
 		this.audioManager.pause();
+		this.inputManager.disable();
 	}
 
 	/**
@@ -334,6 +370,7 @@ export class BeatBornerGame {
 	 * Nettoie les ressources
 	 */
 	dispose() {
+		if (this.inputManager) this.inputManager.dispose();
 		if (this.audioManager) this.audioManager.dispose();
 		if (this.sceneManager) this.sceneManager.dispose();
 	}

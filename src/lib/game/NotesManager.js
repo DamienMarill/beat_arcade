@@ -1,4 +1,7 @@
-import { MeshBuilder, StandardMaterial, Color3, Animation } from '@babylonjs/core';
+import { MeshBuilder, StandardMaterial, Color3, Animation, Vector3 } from '@babylonjs/core';
+import { ParticleSystem } from '@babylonjs/core/Particles/particleSystem';
+import { Texture } from '@babylonjs/core/Materials/Textures/texture';
+import { Color4 } from '@babylonjs/core/Maths/math.color';
 import { GameConfig, DerivedConfig } from './GameConfig.js';
 
 /**
@@ -110,6 +113,138 @@ export class NotesManager {
 		);
 
 		return note;
+	}
+
+	/**
+	 * Tente de frapper une note à la position donnée
+	 * Retourne true si une note a été frappée avec succès
+	 */
+	tryHitNote(gridX, gridY) {
+		const currentAudioTime = this.audioManager.getCurrentTime();
+
+		// Chercher une note frappable à cette position
+		for (const noteObj of this.notes) {
+			// Ignorer les notes déjà frappées/manquées ou invisibles
+			if (noteObj.hit || noteObj.missed || !noteObj.isVisible) continue;
+
+			const { data } = noteObj;
+
+			// Vérifier la position
+			if (data.x !== gridX || data.y !== gridY) continue;
+
+			// Vérifier la fenêtre temporelle
+			const timeUntilHit = data.time - currentAudioTime;
+			if (Math.abs(timeUntilHit) <= this.hitWindow) {
+				// HIT RÉUSSI !
+				this.hitNote(noteObj, timeUntilHit, gridX, gridY);
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Marque une note comme frappée et applique les effets visuels
+	 * @private
+	 */
+	hitNote(noteObj, timeOffset, gridX, gridY) {
+		noteObj.hit = true;
+		noteObj.isVisible = false;
+
+		const { mesh, data } = noteObj;
+
+		// IMPORTANT: Utiliser directement les positions de la grille !
+		const cameraZ = this.cameraController.getPositionZ();
+		const hitBarZ = cameraZ + this.hitDistance;
+
+		// Récupérer les positions monde de la grille depuis GameConfig
+		const gridPositions = GameConfig.grid.positions;
+		const particlePosition = new Vector3(
+			gridPositions.x[gridX],  // Position X exacte de la case de grille
+			gridPositions.y[gridY],  // Position Y exacte de la case de grille
+			hitBarZ                  // Position Z de la grille (caméra + 5)
+		);
+
+		// Créer un système de particules à la position de la grille
+		this.createHitParticles(particlePosition, data.type);
+
+		// Jouer le son de hit
+		this.audioManager.playHitSound();
+
+		// Désactiver immédiatement la note
+		mesh.setEnabled(false);
+
+		// Calculer le timing (perfect/good/ok)
+		const timingMs = Math.abs(timeOffset * 1000);
+		let timing = 'OK';
+		if (timingMs < 50) timing = 'PERFECT';
+		else if (timingMs < 100) timing = 'GOOD';
+
+		console.log(`✅ HIT ${timing} - Grid(${gridX},${gridY}) | Pos3D: (${particlePosition.x.toFixed(1)}, ${particlePosition.y.toFixed(1)}, ${particlePosition.z.toFixed(1)})`);
+	}
+
+	/**
+	 * Crée un système de particules pour l'effet de frappe
+	 * @private
+	 */
+	createHitParticles(position, noteType) {
+		// Couleur selon le type de note
+		const colors = GameConfig.colors;
+		const noteColor = noteType === 0 ? colors.red : colors.blue;
+
+		// Créer un vrai ParticleSystem Babylon.js
+		const particleSystem = new ParticleSystem(`hit_${Date.now()}`, 100, this.scene);
+
+		// Texture simple (un rond blanc)
+		particleSystem.particleTexture = new Texture("https://www.babylonjs-playground.com/textures/flare.png", this.scene);
+
+		// Position d'émission
+		particleSystem.emitter = position;
+		particleSystem.minEmitBox = new Vector3(0, 0, 0);
+		particleSystem.maxEmitBox = new Vector3(0, 0, 0);
+
+		// Couleurs
+		particleSystem.color1 = new Color4(...noteColor.diffuse, 1);
+		particleSystem.color2 = new Color4(...noteColor.emissive, 1);
+		particleSystem.colorDead = new Color4(0, 0, 0, 0);
+
+		// Taille des particules
+		particleSystem.minSize = 0.2;
+		particleSystem.maxSize = 0.4;
+
+		// Durée de vie
+		particleSystem.minLifeTime = 0.3;
+		particleSystem.maxLifeTime = 0.6;
+
+		// Taux d'émission
+		particleSystem.emitRate = 200;
+
+		// Blend mode pour effet brillant
+		particleSystem.blendMode = ParticleSystem.BLENDMODE_ADD;
+
+		// Direction (explosion vers le haut et les côtés)
+		particleSystem.direction1 = new Vector3(-1, 1, -1);
+		particleSystem.direction2 = new Vector3(1, 3, 1);
+
+		// Vitesse
+		particleSystem.minEmitPower = 1.5;
+		particleSystem.maxEmitPower = 2.5;
+		particleSystem.updateSpeed = 0.016;
+
+		// Gravité
+		particleSystem.gravity = new Vector3(0, -9.8, 0);
+
+		// Durée d'émission courte (explosion rapide)
+		particleSystem.targetStopDuration = 0.1;
+
+		// Auto-destruction après arrêt
+		particleSystem.disposeOnStop = true;
+
+		// Démarrer !
+		particleSystem.start();
+
+		console.log(`💥 ParticleSystem créé à la position (${position.x}, ${position.y}, ${position.z})`);
 	}
 
 	/**
