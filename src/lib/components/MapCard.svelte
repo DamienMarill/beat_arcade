@@ -1,17 +1,15 @@
 <script>
-	export let map;
-	export let onSelect;
-	export let showPlayCount = false;
+	let { map, onSelect, showPlayCount = false } = $props();
 
 	// Informations de la map
-	$: metadata = map?.metadata || {};
-	$: coverUrl = map?.version?.coverUrl || map?.versions?.[0]?.coverURL || '';
-	$: songName = metadata.songName || 'Unknown';
-	$: artistName = metadata.songAuthorName || 'Unknown Artist';
-	$: mapper = metadata.levelAuthorName || 'Unknown Mapper';
-	$: bpm = metadata.bpm || 0;
-	$: duration = metadata.duration || 0;
-	$: stats = map?.stats || {};
+	let metadata = $derived(map?.metadata || {});
+	let coverUrl = $derived(map?.version?.coverUrl || map?.versions?.[0]?.coverURL || '');
+	let songName = $derived(metadata.songName || 'Unknown');
+	let artistName = $derived(metadata.songAuthorName || 'Unknown Artist');
+	let mapper = $derived(metadata.levelAuthorName || 'Unknown Mapper');
+	let bpm = $derived(metadata.bpm || 0);
+	let duration = $derived(metadata.duration || 0);
+	let stats = $derived(map?.stats || {});
 
 	// Formater la durée (secondes → mm:ss)
 	function formatDuration(seconds) {
@@ -31,10 +29,10 @@
 <div
 	data-nav-item
 	class="card card-side bg-base-200 border-2 border-base-300 hover:border-primary transition-all duration-300 cursor-pointer group h-32"
-	on:click={() => onSelect(map)}
+	onclick={() => onSelect(map)}
 	role="button"
 	tabindex="0"
-	on:keydown={(e) => e.key === 'Enter' && onSelect(map)}
+	onkeydown={(e) => e.key === 'Enter' && onSelect(map)}
 >
 	<!-- Cover image à gauche -->
 	<figure class="relative w-32 h-32 overflow-hidden flex-shrink-0">

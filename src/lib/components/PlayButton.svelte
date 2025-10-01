@@ -1,6 +1,5 @@
 <script>
-	export let onPlay;
-	export let visible = false;
+	let { onPlay, visible = false } = $props();
 </script>
 
 {#if visible}
@@ -8,7 +7,7 @@
 		<button
 			data-nav-item
 			class="btn btn-primary btn-lg px-12 py-4 text-2xl font-bold rounded-full shadow-neon hover:scale-110 active:scale-95 transition-all duration-300 animate-bounce-in pointer-events-auto"
-			on:click={onPlay}
+			onclick={onPlay}
 		>
 			🎵 JOUER
 		</button>

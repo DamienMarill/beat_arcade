@@ -1,6 +1,8 @@
 <script>
 	import { onMount, onDestroy } from 'svelte';
-	import { NavigationManager } from '$lib/ui/NavigationManager.js';
+	import { navManager } from '$lib/ui/NavigationManager.js';
+	import { MenuContext } from '$lib/ui/contexts/MenuContext.js';
+	import { GameContext } from '$lib/ui/contexts/GameContext.js';
 	import LoadingScreen from '$lib/components/LoadingScreen.svelte';
 	import PlayButton from '$lib/components/PlayButton.svelte';
 	import GameUI from '$lib/components/GameUI.svelte';
@@ -9,34 +11,36 @@
 	import { BeatBornerGame } from '$lib/game/BeatBornerGame.js';
 
 	// États de l'application
-	let currentScreen = 'menu'; // 'menu' | 'game' (mapSelection est une modal dans game)
+	let currentScreen = $state('menu'); // 'menu' | 'game' (mapSelection est une modal dans game)
 
-	// Navigation
-	let navManager;
+	// Navigation contexts
+	let menuContext = $state();
+	let gameContext = $state();
 
 	// Game
-	let canvas;
-	let game;
-	let selectedMap = null;
-	let showLoading = false;
-	let showPlayButton = false;
-	let showGameUI = false;
-	let showPauseModal = false;
-	let mapInfo = null;
-	let songName = 'Loading...';
-	let gameTime = '00:00';
-	let notesCount = 0;
-	let gameTimeInterval;
+	let canvas = $state();
+	let game = $state();
+	let selectedMap = $state(null);
+	let showLoading = $state(false);
+	let showPlayButton = $state(false);
+	let showGameUI = $state(false);
+	let showPauseModal = $state(false);
+	let mapInfo = $state(null);
+	let songName = $state('Loading...');
+	let gameTime = $state('00:00');
+	let notesCount = $state(0);
+	let gameTimeInterval = $state();
 
 	onMount(() => {
-		// Créer le manager de navigation
-		navManager = new NavigationManager();
-		navManager.enable('[data-nav-item]');
-
-		// Listener pour X/N pendant le jeu (seulement côté client)
-		if (typeof window !== 'undefined') {
-			window.addEventListener('keydown', handleGamePauseKey);
-		}
+		// Créer les contexts de navigation
+		menuContext = new MenuContext();
+		gameContext = new GameContext({
+			onPause: () => {
+				if (game) {
+					game.pauseGame();
+				}
+			}
+		});
 	});
 
 	onDestroy(() => {
@@ -46,32 +50,59 @@
 		if (gameTimeInterval) {
 			clearInterval(gameTimeInterval);
 		}
-		if (navManager) {
-			navManager.dispose();
-		}
-		// Cleanup listener (seulement côté client)
-		if (typeof window !== 'undefined') {
-			window.removeEventListener('keydown', handleGamePauseKey);
+		// Cleanup de la navigation
+		navManager.clearAllContexts();
+	});
+
+	// Gérer l'activation des contexts selon l'écran
+	// IMPORTANT: Ce $effect doit UNIQUEMENT observer currentScreen, menuContext, gameContext
+	// Ne PAS observer d'autres variables pour éviter les redéclenchements
+	$effect(() => {
+		// Observer explicitement ces 3 variables
+		const screen = currentScreen;
+		const menu = menuContext;
+		const gameCtx = gameContext;
+		
+		if (!menu || !gameCtx) return;
+
+		if (screen === 'menu') {
+			console.log('[+page] Activating menu context');
+			navManager.pushContext(menu);
+			
+			return () => {
+				console.log('[+page] Cleanup menu context');
+				navManager.popContext();
+			};
+		} else if (screen === 'game') {
+			console.log('[+page] Activating game context');
+			navManager.pushContext(gameCtx);
+			
+			return () => {
+				console.log('[+page] Cleanup game context');
+				navManager.popContext();
+			};
 		}
 	});
 
-	let showMapSelector = false;
+	// Les modals (MapSelector, PauseModal) gèrent leurs propres contexts
+	// via leurs composants respectifs
+
+	let showMapSelector = $state(false);
 
 	function navigateToMapSelection() {
 		// Aller sur l'écran de jeu (tunnel 3D) puis afficher la modal
 		currentScreen = 'game';
-		navManager.disable();
 
 		// Initialiser le jeu d'abord (tunnel 3D)
-		setTimeout(() => {
+		requestAnimationFrame(() => {
 			if (canvas && !game) {
 				initGameWithoutMap();
 			}
 			// Puis afficher le sélecteur après initialisation
-			setTimeout(() => {
+			requestAnimationFrame(() => {
 				showMapSelector = true;
-			}, 100);
-		}, 100);
+			});
+		});
 	}
 
 	async function initGameWithoutMap() {
@@ -129,14 +160,12 @@
 		showPlayButton = false;
 		showGameUI = false;
 		showPauseModal = false;
+		showMapSelector = false;
 
 		// Retour au menu
 		currentScreen = 'menu';
 
-		// Redécouvrir les éléments du menu et réactiver la navigation
-		setTimeout(() => {
-			navManager.refresh('[data-nav-item]');
-		}, 100);
+		// Le $effect gérera automatiquement la navigation
 	}
 
 	async function initGameAndStart() {
@@ -169,19 +198,16 @@
 			onGameStart: () => {
 				showPlayButton = false;
 				showGameUI = true;
-				// DÉSACTIVER complètement la navigation pendant le jeu
-				navManager.disable();
+				// Le $effect désactivera automatiquement la navigation
 				startGameTimeUpdate();
 			},
 			onGamePause: () => {
 				showPauseModal = true;
-				// Activer la navigation pour la modal de pause
-				setTimeout(() => navManager.enable('[data-nav-item]'), 150);
+				// Le $effect activera automatiquement la navigation
 			},
 			onGameResume: () => {
 				showPauseModal = false;
-				// Désactiver la navigation, retour au jeu
-				navManager.disable();
+				// Le $effect désactivera automatiquement la navigation
 			}
 		}, mapId);
 
@@ -217,15 +243,6 @@
 	function handleQuitFromPause() {
 		navigateToMenu();
 	}
-
-	function handleGamePauseKey(event) {
-		const key = event.key.toLowerCase();
-		// X ou N pour pause uniquement pendant le jeu actif
-		if ((key === 'x' || key === 'n') && currentScreen === 'game' && game && game.isPlaying && !showPauseModal) {
-			event.preventDefault();
-			game.pauseGame();
-		}
-	}
 </script>
 
 {#if currentScreen === 'menu'}
@@ -243,7 +260,7 @@
 				<button
 					data-nav-item
 					class="btn btn-primary btn-lg px-16 py-4 text-xl font-bold rounded-full shadow-neon hover:scale-105 transition-all duration-300 animate-bounce-in"
-					on:click={navigateToMapSelection}
+					onclick={navigateToMapSelection}
 				>
 					▶️ JOUER
 				</button>
@@ -251,7 +268,7 @@
 				<button
 					data-nav-item
 					class="btn btn-outline btn-secondary btn-lg px-16 py-4 text-xl font-bold rounded-full"
-					on:click={() => alert('Paramètres - En développement')}
+					onclick={() => alert('Paramètres - En développement')}
 				>
 					⚙️ PARAMÈTRES
 				</button>
@@ -259,7 +276,7 @@
 				<button
 					data-nav-item
 					class="btn btn-outline btn-accent btn-lg px-16 py-4 text-xl font-bold rounded-full"
-					on:click={() => alert('Scores - En développement')}
+					onclick={() => alert('Scores - En développement')}
 				>
 					🏆 SCORES
 				</button>
