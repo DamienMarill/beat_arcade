@@ -1,7 +1,8 @@
+import { GameConfig } from '$lib/game/GameConfig.js';
+
 /**
  * Gère la navigation au clavier pour l'UI (borne d'arcade)
- * Navigation: ZQSD ou Flèches directionnelles
- * Validation: R ou I
+ * Les touches sont configurables via GameConfig.navigationBindings
  */
 export class NavigationManager {
 	constructor() {
@@ -89,15 +90,16 @@ export class NavigationManager {
 		if (!this.enabled) return;
 
 		const key = event.key.toLowerCase();
+		const bindings = GameConfig.navigationBindings;
 
 		// Select (B button) - Toujours actif même sans éléments focusables
-		if (key === 'w' || key === 'b') {
+		if (bindings.select.includes(key)) {
 			event.preventDefault();
 			this.notifySelect();
 			return;
 		}
 		// Start (X button) - Toujours actif même sans éléments focusables
-		else if (key === 'x' || key === 'n') {
+		else if (bindings.start.includes(key)) {
 			event.preventDefault();
 			this.notifyStart();
 			return;
@@ -107,27 +109,27 @@ export class NavigationManager {
 		if (this.focusableElements.length === 0) return;
 
 		// Navigation haut
-		if (key === 'z' || key === 'arrowup') {
+		if (bindings.up.includes(key)) {
 			event.preventDefault();
 			this.navigateUp();
 		}
 		// Navigation bas
-		else if (key === 's' || key === 'arrowdown') {
+		else if (bindings.down.includes(key)) {
 			event.preventDefault();
 			this.navigateDown();
 		}
 		// Navigation gauche (optionnel pour grilles)
-		else if (key === 'q' || key === 'arrowleft') {
+		else if (bindings.left.includes(key)) {
 			event.preventDefault();
 			this.navigateLeft();
 		}
 		// Navigation droite (optionnel pour grilles)
-		else if (key === 'd' || key === 'arrowright') {
+		else if (bindings.right.includes(key)) {
 			event.preventDefault();
 			this.navigateRight();
 		}
 		// Validation (A button)
-		else if (key === 'r' || key === 'i') {
+		else if (bindings.validate.includes(key)) {
 			event.preventDefault();
 			this.validate();
 		}

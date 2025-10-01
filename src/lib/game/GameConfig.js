@@ -122,9 +122,9 @@ export const GameConfig = {
 	 * Taille des notes (unités)
 	 */
 	noteSize: {
-		width: 0.8,
-		height: 0.8,
-		depth: 0.8
+		width: 0.2,
+		height: 0.2,
+		depth: 0.2
 	},
 
 	/**
@@ -149,7 +149,7 @@ export const GameConfig = {
 	/**
 	 * Vitesse de rotation des notes (frames par seconde)
 	 */
-	noteRotationSpeed: 30,
+	noteRotationSpeed: 10,
 
 	// ═══════════════════════════════════════════════════
 	// CONTRÔLES
@@ -172,6 +172,34 @@ export const GameConfig = {
 		't': { x: 3, y: 1 },  // Colonne centre-gauche, ligne haute
 		'i': { x: 0, y: 1 },  // Colonne centre-droite, ligne haute
 		'o': { x: 1, y: 1 }   // Colonne droite, ligne haute
+	},
+
+	// ═══════════════════════════════════════════════════
+	// NAVIGATION UI (Menus / Modals)
+	// ═══════════════════════════════════════════════════
+
+	/**
+	 * Boutons de navigation pour l'interface (borne d'arcade)
+	 * Permet de mapper plusieurs touches à une même action
+	 */
+	navigationBindings: {
+		// Navigation directionnelle
+		up: ['z', 'arrowup'],           // Haut
+		down: ['s', 'arrowdown'],       // Bas
+		left: ['q', 'arrowleft'],       // Gauche
+		right: ['d', 'arrowright'],     // Droite
+		
+		// Boutons d'action (arcade)
+		validate: ['r', 'i'],           // A Button - Valider/Confirmer
+		return: ['f', 'k'],             // B Button - Retour/Sélection alternative
+		start: ['x', 'n'],              // X Button - Démarrer/Pause
+		enter: ['y', 'p'],
+		close: ['h', 'm'],
+		
+		// Alias pour cohérence
+		confirm: ['r', 'i'],            // Même que validate
+		cancel: ['f', 'k'],             // Même que select
+		pause: ['x', 'n']               // Même que start
 	},
 
 	// ═══════════════════════════════════════════════════

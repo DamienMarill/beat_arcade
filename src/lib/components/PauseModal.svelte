@@ -1,9 +1,14 @@
 <script>
+	import { GameConfig } from '$lib/game/GameConfig.js';
+
 	export let visible = false;
 	export let onResume;
 	export let onQuit;
 	export let songName = '';
 	export let navManager = null;
+
+	// Générer le texte d'aide basé sur les bindings
+	$: navigationHelp = `${GameConfig.navigationBindings.up[0].toUpperCase()}${GameConfig.navigationBindings.down[0].toUpperCase()}${GameConfig.navigationBindings.left[0].toUpperCase()}${GameConfig.navigationBindings.right[0].toUpperCase()} / ⬆️⬇️ pour naviguer • ${GameConfig.navigationBindings.validate[0].toUpperCase()}/${GameConfig.navigationBindings.validate[1].toUpperCase()} pour valider`;
 
 	let dialogElement;
 
@@ -62,7 +67,7 @@
 
 		<!-- Instruction -->
 		<div class="text-center mt-6 text-sm opacity-70">
-			<p>ZQSD / ⬆️⬇️ pour naviguer • R/I pour valider</p>
+			<p>{navigationHelp}</p>
 		</div>
 	</div>
 

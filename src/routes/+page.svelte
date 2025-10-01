@@ -7,6 +7,7 @@
 	import PauseModal from '$lib/components/PauseModal.svelte';
 	import MapSelector from '$lib/components/MapSelector.svelte';
 	import { BeatBornerGame } from '$lib/game/BeatBornerGame.js';
+	import { GameConfig } from '$lib/game/GameConfig.js';
 
 	// États de l'application
 	let currentScreen = 'menu'; // 'menu' | 'game' (mapSelection est une modal dans game)
@@ -216,8 +217,8 @@
 
 	function handleGamePauseKey(event) {
 		const key = event.key.toLowerCase();
-		// X ou N pour pause uniquement pendant le jeu actif
-		if ((key === 'x' || key === 'n') && currentScreen === 'game' && game && game.isPlaying && !showPauseModal) {
+		// Utiliser les touches configurées dans GameConfig pour la pause
+		if (GameConfig.navigationBindings.pause.includes(key) && currentScreen === 'game' && game && game.isPlaying && !showPauseModal) {
 			event.preventDefault();
 			game.pauseGame();
 		}
