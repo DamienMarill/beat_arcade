@@ -92,14 +92,14 @@ export class NavigationManager {
 		const key = event.key.toLowerCase();
 		const bindings = GameConfig.navigationBindings;
 
-		// Select (B button) - Toujours actif même sans éléments focusables
-		if (bindings.select.includes(key)) {
+		// Return (B button) - Toujours actif même sans éléments focusables
+		if (bindings.return && bindings.return.includes(key)) {
 			event.preventDefault();
 			this.notifySelect();
 			return;
 		}
 		// Start (X button) - Toujours actif même sans éléments focusables
-		else if (bindings.start.includes(key)) {
+		else if (bindings.start && bindings.start.includes(key)) {
 			event.preventDefault();
 			this.notifyStart();
 			return;
@@ -109,27 +109,27 @@ export class NavigationManager {
 		if (this.focusableElements.length === 0) return;
 
 		// Navigation haut
-		if (bindings.up.includes(key)) {
+		if (bindings.up && bindings.up.includes(key)) {
 			event.preventDefault();
 			this.navigateUp();
 		}
 		// Navigation bas
-		else if (bindings.down.includes(key)) {
+		else if (bindings.down && bindings.down.includes(key)) {
 			event.preventDefault();
 			this.navigateDown();
 		}
 		// Navigation gauche (optionnel pour grilles)
-		else if (bindings.left.includes(key)) {
+		else if (bindings.left && bindings.left.includes(key)) {
 			event.preventDefault();
 			this.navigateLeft();
 		}
 		// Navigation droite (optionnel pour grilles)
-		else if (bindings.right.includes(key)) {
+		else if (bindings.right && bindings.right.includes(key)) {
 			event.preventDefault();
 			this.navigateRight();
 		}
 		// Validation (A button)
-		else if (bindings.validate.includes(key)) {
+		else if (bindings.validate && bindings.validate.includes(key)) {
 			event.preventDefault();
 			this.validate();
 		}

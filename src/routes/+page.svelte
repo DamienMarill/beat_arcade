@@ -6,6 +6,7 @@
 	import GameUI from '$lib/components/GameUI.svelte';
 	import PauseModal from '$lib/components/PauseModal.svelte';
 	import MapSelector from '$lib/components/MapSelector.svelte';
+	import GlobalKeyboard from '$lib/components/GlobalKeyboard.svelte';
 	import { BeatBornerGame } from '$lib/game/BeatBornerGame.js';
 	import { GameConfig } from '$lib/game/GameConfig.js';
 
@@ -218,7 +219,7 @@
 	function handleGamePauseKey(event) {
 		const key = event.key.toLowerCase();
 		// Utiliser les touches configurées dans GameConfig pour la pause
-		if (GameConfig.navigationBindings.pause.includes(key) && currentScreen === 'game' && game && game.isPlaying && !showPauseModal) {
+		if (GameConfig.navigationBindings.pause && GameConfig.navigationBindings.pause.includes(key) && currentScreen === 'game' && game && game.isPlaying && !showPauseModal) {
 			event.preventDefault();
 			game.pauseGame();
 		}
@@ -285,3 +286,6 @@
 		<PauseModal visible={showPauseModal} onResume={handleResume} onQuit={handleQuitFromPause} {songName} {navManager} />
 	</div>
 {/if}
+
+<!-- Clavier virtuel global (au-dessus de tout) -->
+<GlobalKeyboard />

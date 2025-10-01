@@ -1,7 +1,9 @@
 <script>
 	import { onMount, onDestroy } from 'svelte';
 	import MapCard from './MapCard.svelte';
+	import InputWithKeyboard from './InputWithKeyboard.svelte';
 	import { beatSaverService } from '../../services/BeatSaverService.js';
+	import { keyboardStore } from '$lib/stores/keyboardStore.js';
 
 	export let onSelectMap;
 	export let onCancel;
@@ -21,13 +23,28 @@
 	const tabs = [
 		{ id: 'recent', label: '📋 Récents', enabled: true },
 		{ id: 'popular', label: '🔥 Plus Joués', enabled: true },
-		{ id: 'search', label: '🔍 Recherche', enabled: false }
+		{ id: 'search', label: '🔍 Recherche', enabled: true }
 	];
+
+	// Recherche
+	let searchQuery = '';
+	let searchResults = [];
+	let searchInputComponent;
+	let searchInputFocused = false;
 	let activeTabIndex = 1; // Commencer sur "Plus Joués"
+	
+	// État du clavier
+	let isKeyboardOpen = false;
+	let keyboardUnsubscribe;
 
 	onMount(() => {
 		loadRecentMaps();
 		loadPopularMaps();
+
+		// S'abonner au clavier store
+		keyboardUnsubscribe = keyboardStore.subscribe(state => {
+			isKeyboardOpen = state.visible;
+		});
 
 		// Gérer la navigation personnalisée
 		if (typeof window !== 'undefined') {
@@ -36,6 +53,9 @@
 	});
 
 	onDestroy(() => {
+		if (keyboardUnsubscribe) {
+			keyboardUnsubscribe();
+		}
 		if (typeof window !== 'undefined') {
 			window.removeEventListener('keydown', handleCustomNavigation);
 		}
@@ -83,6 +103,28 @@
 		}
 	}
 
+	async function handleSearch() {
+		if (!searchQuery.trim()) {
+			searchResults = [];
+			return;
+		}
+
+		try {
+			loading = true;
+			error = null;
+
+			const data = await beatSaverService.searchMaps(searchQuery.trim());
+			searchResults = data.docs || [];
+			selectedMapIndex = 0;
+			searchInputFocused = false; // Permettre la navigation dans les résultats
+			loading = false;
+		} catch (err) {
+			console.error('Erreur recherche:', err);
+			error = 'Impossible de rechercher les maps';
+			loading = false;
+		}
+	}
+
 	function saveRecentMap(map) {
 		try {
 			// Ajouter en premier, supprimer les doublons
@@ -102,11 +144,17 @@
 	function changeTab(tab) {
 		activeTab = tab;
 		selectedMapIndex = 0; // Reset la sélection
+		searchInputFocused = false; // Reset focus
 
 		if (tab === 'popular') {
 			loadPopularMaps();
 		} else if (tab === 'recent') {
 			loadRecentMaps();
+		} else if (tab === 'search') {
+			// Focus automatique sur la barre de recherche après un court délai
+			setTimeout(() => {
+				searchInputFocused = true;
+			}, 100);
 		}
 	}
 
@@ -121,8 +169,30 @@
 	// Navigation personnalisée: Gauche/Droite = onglets, Haut/Bas = maps
 	function handleCustomNavigation(event) {
 		if (!visible) return;
+		// Ne pas naviguer dans la modal si le clavier est ouvert
+		if (isKeyboardOpen) return;
 
 		const key = event.key.toLowerCase();
+
+		// Sur l'onglet recherche avec focus sur l'input
+		if (activeTab === 'search' && searchInputFocused) {
+			// R/I: ouvrir le clavier
+			if (key === 'r' || key === 'i') {
+				event.preventDefault();
+				if (searchInputComponent) {
+					searchInputComponent.triggerClick(); // Déclenche l'ouverture du clavier
+				}
+				return;
+			}
+			// S/Bas: descendre vers les résultats
+			else if ((key === 's' || key === 'arrowdown') && searchResults.length > 0) {
+				event.preventDefault();
+				searchInputFocused = false;
+				selectedMapIndex = 0;
+				scrollToSelectedMap();
+				return;
+			}
+		}
 
 		// Gauche/Droite: changer d'onglet
 		if (key === 'q' || key === 'arrowleft') {
@@ -141,7 +211,10 @@
 		// Haut/Bas: naviguer dans les maps
 		else if (key === 'z' || key === 'arrowup') {
 			event.preventDefault();
-			if (selectedMapIndex > 0) {
+			// Si on remonte depuis les résultats vers l'input
+			if (activeTab === 'search' && selectedMapIndex === 0 && displayedMaps.length > 0) {
+				searchInputFocused = true;
+			} else if (selectedMapIndex > 0) {
 				selectedMapIndex--;
 				scrollToSelectedMap();
 			}
@@ -155,7 +228,7 @@
 		// R/I: valider la sélection
 		else if (key === 'r' || key === 'i') {
 			event.preventDefault();
-			if (displayedMaps[selectedMapIndex]) {
+			if (!searchInputFocused && displayedMaps[selectedMapIndex]) {
 				handleSelectMap(displayedMaps[selectedMapIndex]);
 			}
 		}
@@ -176,7 +249,7 @@
 		}
 	}
 
-	$: displayedMaps = activeTab === 'recent' ? recentMaps : maps;
+	$: displayedMaps = activeTab === 'recent' ? recentMaps : activeTab === 'search' ? searchResults : maps;
 	$: activeTab = tabs[activeTabIndex].id;
 </script>
 
@@ -218,6 +291,32 @@
 
 		<!-- Content - Single column layout -->
 		<div class="flex-1 overflow-y-auto p-6">
+			<!-- Champ de recherche (visible seulement sur le tab search) -->
+			{#if activeTab === 'search'}
+				<div class="mb-6 max-w-2xl mx-auto">
+					<div
+						class="transition-all duration-200"
+						class:ring-4={searchInputFocused}
+						class:ring-primary={searchInputFocused}
+						class:scale-105={searchInputFocused}
+					>
+						<InputWithKeyboard
+							bind:this={searchInputComponent}
+							bind:value={searchQuery}
+							placeholder="Rechercher une musique..."
+							label="🔍 Recherche"
+							inputClass="input-lg text-xl"
+							on:submit={handleSearch}
+						/>
+					</div>
+					{#if searchInputFocused}
+						<p class="text-center mt-2 text-sm opacity-70">
+							Appuyez sur R/I pour ouvrir le clavier • S pour descendre aux résultats
+						</p>
+					{/if}
+				</div>
+			{/if}
+
 			{#if loading}
 				<div class="flex items-center justify-center h-full">
 					<span class="loading loading-spinner loading-lg text-primary"></span>

@@ -8,7 +8,18 @@
 	export let navManager = null;
 
 	// Générer le texte d'aide basé sur les bindings
-	$: navigationHelp = `${GameConfig.navigationBindings.up[0].toUpperCase()}${GameConfig.navigationBindings.down[0].toUpperCase()}${GameConfig.navigationBindings.left[0].toUpperCase()}${GameConfig.navigationBindings.right[0].toUpperCase()} / ⬆️⬇️ pour naviguer • ${GameConfig.navigationBindings.validate[0].toUpperCase()}/${GameConfig.navigationBindings.validate[1].toUpperCase()} pour valider`;
+	$: navigationHelp = (() => {
+		const b = GameConfig.navigationBindings;
+		const nav = [b.up?.[0], b.down?.[0], b.left?.[0], b.right?.[0]]
+			.filter(Boolean)
+			.map(k => k.toUpperCase())
+			.join('');
+		const val = [b.validate?.[0], b.validate?.[1]]
+			.filter(Boolean)
+			.map(k => k.toUpperCase())
+			.join('/');
+		return `${nav} / ⬆️⬇️ pour naviguer • ${val} pour valider`;
+	})();
 
 	let dialogElement;
 

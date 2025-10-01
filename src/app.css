@@ -141,6 +141,10 @@ body {
   z-index: 10;
 }
 
+.modal{
+    z-index: 990;
+}
+
 /* Animation de pulse pour l'élément focusé */
 @keyframes nav-pulse {
   0%, 100% {
