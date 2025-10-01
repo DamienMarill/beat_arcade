@@ -1,23 +1,33 @@
 <script>
-	import { onMount } from 'svelte';
-
 	export let visible = false;
 	export let onResume;
 	export let onQuit;
 	export let songName = '';
+	export let navManager = null;
 
 	let dialogElement;
 
 	$: if (dialogElement) {
 		if (visible) {
 			dialogElement.showModal();
+			// Attendre que le DOM soit mis à jour puis réactiver la navigation
+			setTimeout(() => {
+				if (navManager) {
+					// Utiliser un sélecteur spécifique au modal de pause uniquement
+					navManager.enable('#pause-modal [data-nav-item]');
+				}
+			}, 150);
 		} else {
 			dialogElement.close();
+			// Désactiver la navigation quand le modal se ferme
+			if (navManager) {
+				navManager.disable();
+			}
 		}
 	}
 </script>
 
-<dialog bind:this={dialogElement} class="modal modal-bottom sm:modal-middle">
+<dialog bind:this={dialogElement} id="pause-modal" class="modal modal-bottom sm:modal-middle">
 	<div class="modal-box bg-base-200 border-4 border-primary shadow-neon max-w-2xl">
 		<!-- Titre -->
 		<h2 class="text-5xl font-bold text-center mb-8 text-neon animate-pulse-glow">

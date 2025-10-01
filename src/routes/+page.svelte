@@ -175,13 +175,9 @@
 			},
 			onGamePause: () => {
 				showPauseModal = true;
-				// Activer la navigation pour la modal de pause
-				setTimeout(() => navManager.enable('[data-nav-item]'), 150);
 			},
 			onGameResume: () => {
 				showPauseModal = false;
-				// Désactiver la navigation, retour au jeu
-				navManager.disable();
 			}
 		}, mapId);
 
@@ -285,6 +281,6 @@
 		<LoadingScreen visible={showLoading} {mapInfo} />
 		<PlayButton visible={showPlayButton} onPlay={handlePlay} />
 		<GameUI visible={showGameUI} {songName} {gameTime} {notesCount} />
-		<PauseModal visible={showPauseModal} onResume={handleResume} onQuit={handleQuitFromPause} {songName} />
+		<PauseModal visible={showPauseModal} onResume={handleResume} onQuit={handleQuitFromPause} {songName} {navManager} />
 	</div>
 {/if}
