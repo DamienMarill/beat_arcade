@@ -1,8 +1,5 @@
 <script>
-	export let visible = false;
-	export let songName = 'Loading...';
-	export let gameTime = '00:00';
-	export let notesCount = 0;
+	let { visible = false, songName = 'Loading...', gameTime = '00:00', notesCount = 0 } = $props();
 </script>
 
 {#if visible}

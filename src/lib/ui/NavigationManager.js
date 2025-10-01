@@ -1,302 +1,145 @@
 /**
- * Gère la navigation au clavier pour l'UI (borne d'arcade)
- * Navigation: ZQSD ou Flèches directionnelles
- * Validation: R ou I
+ * Gestionnaire de navigation global avec système de stack
+ * Route les événements clavier vers le context actif (sommet de la stack)
+ * Garantit l'isolation stricte entre les layers (menu, modals, etc.)
  */
 export class NavigationManager {
 	constructor() {
+		this.contextStack = []; // Stack de NavigationContext
 		this.enabled = false;
-		this.focusableElements = [];
-		this.currentIndex = 0;
-		this.callbacks = {
-			onNavigate: null,
-			onValidate: null,
-			onSelect: null,  // W ou B
-			onStart: null    // X ou N
-		};
 
-		// Binding des événements
+		// Binding du handler
 		this.handleKeyDown = this.handleKeyDown.bind(this);
 	}
 
 	/**
-	 * Active la navigation et découvre les éléments focusables
+	 * Retourne le context actif (sommet de la stack)
 	 */
-	enable(selector = '[data-nav-item]') {
-		if (this.enabled) return;
-
-		// Découvrir les éléments navigables
-		this.discoverElements(selector);
-
-		// Activer les événements
-		window.addEventListener('keydown', this.handleKeyDown);
-		this.enabled = true;
-
-		// Focus initial
-		if (this.focusableElements.length > 0) {
-			this.setFocus(0);
-		}
+	get activeContext() {
+		return this.contextStack.length > 0
+			? this.contextStack[this.contextStack.length - 1]
+			: null;
 	}
 
 	/**
-	 * Désactive la navigation
+	 * Active le système de navigation global
+	 */
+	enable() {
+		if (this.enabled) return;
+
+		window.addEventListener('keydown', this.handleKeyDown);
+		this.enabled = true;
+		console.log('[NavigationManager] Enabled');
+	}
+
+	/**
+	 * Désactive le système de navigation global
 	 */
 	disable() {
 		if (!this.enabled) return;
 
 		window.removeEventListener('keydown', this.handleKeyDown);
 		this.enabled = false;
-
-		// Retirer le focus
-		this.clearFocus();
+		console.log('[NavigationManager] Disabled');
 	}
 
 	/**
-	 * Découvre les éléments navigables dans le DOM
+	 * Ajoute un context à la stack et l'active
+	 * Le context précédent (si existe) est désactivé mais reste dans la stack
 	 */
-	discoverElements(selector) {
-		const elements = document.querySelectorAll(selector);
-		this.focusableElements = Array.from(elements).filter(el => {
-			// Filtrer les éléments disabled ou invisibles
-			return !el.disabled && el.offsetParent !== null;
-		});
-	}
-
-	/**
-	 * Redécouvre les éléments (utile si le DOM change)
-	 */
-	refresh(selector = '[data-nav-item]') {
-		const previousElement = this.focusableElements[this.currentIndex];
-		this.discoverElements(selector);
-
-		// Essayer de maintenir le focus sur le même élément
-		if (previousElement) {
-			const newIndex = this.focusableElements.indexOf(previousElement);
-			if (newIndex !== -1) {
-				this.currentIndex = newIndex;
-			} else {
-				this.currentIndex = 0;
-			}
+	pushContext(context) {
+		if (!context) {
+			console.warn('[NavigationManager] Attempted to push null context');
+			return;
 		}
 
-		this.setFocus(this.currentIndex);
+		// Désactiver le context précédent (s'il existe)
+		if (this.activeContext) {
+			this.activeContext.deactivate();
+		}
+
+		// Ajouter le nouveau context à la stack
+		this.contextStack.push(context);
+
+		// Activer le nouveau context immédiatement
+		context.activate();
+
+		// S'assurer que le manager global est enabled
+		if (!this.enabled) {
+			this.enable();
+		}
+
+		console.log(`[NavigationManager] Pushed context: ${context.name} (stack depth: ${this.contextStack.length})`);
 	}
 
 	/**
-	 * Gère les touches de navigation
+	 * Retire le context au sommet de la stack
+	 * Le context précédent (si existe) est réactivé
+	 */
+	popContext() {
+		if (this.contextStack.length === 0) {
+			console.warn('[NavigationManager] Attempted to pop from empty stack');
+			return;
+		}
+
+		// Retirer et désactiver le context au sommet
+		const poppedContext = this.contextStack.pop();
+		poppedContext.deactivate();
+
+		console.log(`[NavigationManager] Popped context: ${poppedContext.name} (stack depth: ${this.contextStack.length})`);
+
+		// Réactiver le context précédent immédiatement
+		if (this.activeContext) {
+			this.activeContext.reactivate();
+		} else {
+			// Plus de contexts: désactiver le manager
+			this.disable();
+		}
+	}
+
+	/**
+	 * Vide complètement la stack
+	 */
+	clearAllContexts() {
+		while (this.contextStack.length > 0) {
+			this.popContext();
+		}
+		console.log('[NavigationManager] Cleared all contexts');
+	}
+
+	/**
+	 * Gère les événements clavier globaux
+	 * Route UNIQUEMENT vers le context au sommet de la stack
 	 */
 	handleKeyDown(event) {
-		if (!this.enabled) return;
+		if (!this.enabled) {
+			console.log('[NavigationManager] handleKeyDown called but manager is DISABLED');
+			return;
+		}
+		console.log(`[NavigationManager] handleKeyDown: ${event.key}, activeContext: ${this.activeContext?.name}`);
+
+		const context = this.activeContext;
+		if (!context) return;
 
 		const key = event.key.toLowerCase();
 
-		// Select (B button) - Toujours actif même sans éléments focusables
-		if (key === 'w' || key === 'b') {
+		// Router vers le context actif
+		const consumed = context.handleKey(key);
+
+		// Si le context a consommé la touche, empêcher le comportement par défaut
+		if (consumed) {
 			event.preventDefault();
-			this.notifySelect();
-			return;
-		}
-		// Start (X button) - Toujours actif même sans éléments focusables
-		else if (key === 'x' || key === 'n') {
-			event.preventDefault();
-			this.notifyStart();
-			return;
-		}
-
-		// Les touches suivantes nécessitent des éléments focusables
-		if (this.focusableElements.length === 0) return;
-
-		// Navigation haut
-		if (key === 'z' || key === 'arrowup') {
-			event.preventDefault();
-			this.navigateUp();
-		}
-		// Navigation bas
-		else if (key === 's' || key === 'arrowdown') {
-			event.preventDefault();
-			this.navigateDown();
-		}
-		// Navigation gauche (optionnel pour grilles)
-		else if (key === 'q' || key === 'arrowleft') {
-			event.preventDefault();
-			this.navigateLeft();
-		}
-		// Navigation droite (optionnel pour grilles)
-		else if (key === 'd' || key === 'arrowright') {
-			event.preventDefault();
-			this.navigateRight();
-		}
-		// Validation (A button)
-		else if (key === 'r' || key === 'i') {
-			event.preventDefault();
-			this.validate();
 		}
 	}
 
 	/**
-	 * Navigation vers le haut
-	 */
-	navigateUp() {
-		if (this.focusableElements.length === 0) return;
-
-		const newIndex = this.currentIndex - 1;
-		if (newIndex >= 0) {
-			this.setFocus(newIndex);
-			this.notifyNavigate('up');
-		}
-	}
-
-	/**
-	 * Navigation vers le bas
-	 */
-	navigateDown() {
-		if (this.focusableElements.length === 0) return;
-
-		const newIndex = this.currentIndex + 1;
-		if (newIndex < this.focusableElements.length) {
-			this.setFocus(newIndex);
-			this.notifyNavigate('down');
-		}
-	}
-
-	/**
-	 * Navigation vers la gauche (pour grilles)
-	 */
-	navigateLeft() {
-		// Pour l'instant, même comportement que haut
-		this.navigateUp();
-		this.notifyNavigate('left');
-	}
-
-	/**
-	 * Navigation vers la droite (pour grilles)
-	 */
-	navigateRight() {
-		// Pour l'instant, même comportement que bas
-		this.navigateDown();
-		this.notifyNavigate('right');
-	}
-
-	/**
-	 * Valide l'élément actuel
-	 */
-	validate() {
-		if (this.focusableElements.length === 0) return;
-
-		const element = this.focusableElements[this.currentIndex];
-		if (element) {
-			// Déclencher le clic sur l'élément
-			element.click();
-			this.notifyValidate(element);
-		}
-	}
-
-	/**
-	 * Change le focus vers un index donné
-	 */
-	setFocus(index) {
-		if (index < 0 || index >= this.focusableElements.length) return;
-
-		// Retirer l'ancien focus
-		this.clearFocus();
-
-		// Appliquer le nouveau focus
-		this.currentIndex = index;
-		const element = this.focusableElements[index];
-		element.setAttribute('data-nav-focused', 'true');
-		element.classList.add('nav-focused');
-
-		// Scroll si nécessaire
-		element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-	}
-
-	/**
-	 * Retire le focus de tous les éléments
-	 */
-	clearFocus() {
-		this.focusableElements.forEach(el => {
-			el.removeAttribute('data-nav-focused');
-			el.classList.remove('nav-focused');
-		});
-	}
-
-	/**
-	 * Enregistre un callback pour la navigation
-	 */
-	onNavigate(callback) {
-		this.callbacks.onNavigate = callback;
-	}
-
-	/**
-	 * Enregistre un callback pour la validation
-	 */
-	onValidate(callback) {
-		this.callbacks.onValidate = callback;
-	}
-
-	/**
-	 * Enregistre un callback pour Select (W/B)
-	 */
-	onSelect(callback) {
-		this.callbacks.onSelect = callback;
-	}
-
-	/**
-	 * Enregistre un callback pour Start (X/N)
-	 */
-	onStart(callback) {
-		this.callbacks.onStart = callback;
-	}
-
-	/**
-	 * Notifie la navigation
-	 */
-	notifyNavigate(direction) {
-		if (this.callbacks.onNavigate) {
-			this.callbacks.onNavigate(direction, this.currentIndex);
-		}
-	}
-
-	/**
-	 * Notifie la validation
-	 */
-	notifyValidate(element) {
-		if (this.callbacks.onValidate) {
-			this.callbacks.onValidate(element, this.currentIndex);
-		}
-	}
-
-	/**
-	 * Notifie l'appui sur Select
-	 */
-	notifySelect() {
-		if (this.callbacks.onSelect) {
-			this.callbacks.onSelect();
-		}
-	}
-
-	/**
-	 * Notifie l'appui sur Start
-	 */
-	notifyStart() {
-		if (this.callbacks.onStart) {
-			this.callbacks.onStart();
-		}
-	}
-
-	/**
-	 * Retourne l'élément actuellement focusé
-	 */
-	getCurrentElement() {
-		return this.focusableElements[this.currentIndex] || null;
-	}
-
-	/**
-	 * Nettoie les ressources
+	 * Cleanup complet
 	 */
 	dispose() {
+		this.clearAllContexts();
 		this.disable();
-		this.focusableElements = [];
-		this.callbacks = {};
 	}
 }
+
+// Instance singleton
+export const navManager = new NavigationManager();

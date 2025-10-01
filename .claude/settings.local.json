@@ -37,7 +37,12 @@
       "mcp__serena__activate_project",
       "mcp__serena__replace_symbol_body",
       "mcp__serena__insert_after_symbol",
-      "mcp__serena__search_for_pattern"
+      "mcp__serena__search_for_pattern",
+      "mcp__memory-plus__recent",
+      "Bash(npm run check:*)",
+      "Bash(find:*)",
+      "mcp__serena__replace_regex",
+      "mcp__chrome-devtools__select_page"
     ],
     "deny": [],
     "ask": []

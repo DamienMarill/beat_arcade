@@ -1,6 +1,5 @@
 <script>
-	export let visible = true;
-	export let mapInfo = null;
+	let { visible = true, mapInfo = null } = $props();
 </script>
 
 {#if visible}

@@ -1,21 +1,24 @@
 <script>
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount, tick } from 'svelte';
+	import { navManager } from '$lib/ui/NavigationManager.js';
+	import { MapSelectorContext } from '$lib/ui/contexts/MapSelectorContext.js';
+	import BaseModal from './BaseModal.svelte';
 	import MapCard from './MapCard.svelte';
-	import { beatSaverService } from '../../services/BeatSaverService.js';
 
-	export let onSelectMap;
-	export let onCancel;
-	export let visible = true;
+	let { onSelectMap, onCancel, visible = true } = $props();
 
-	let dialogElement;
-	let activeTab = 'popular'; // 'recent' | 'popular' | 'search'
-	let maps = [];
-	let loading = true;
-	let error = null;
-	let selectedMapIndex = 0;
+	// Navigation context
+	let context = $state();
+	let contextPushed = $state(false);
+
+	let activeTab = $state('popular'); // 'recent' | 'popular' | 'search'
+	let maps = $state([]);
+	let loading = $state(true);
+	let error = $state(null);
+	let selectedMapIndex = $state(0);
 
 	// Récents (localStorage)
-	let recentMaps = [];
+	let recentMaps = $state([]);
 
 	// Tabs disponibles
 	const tabs = [
@@ -23,32 +26,55 @@
 		{ id: 'popular', label: '🔥 Plus Joués', enabled: true },
 		{ id: 'search', label: '🔍 Recherche', enabled: false }
 	];
-	let activeTabIndex = 1; // Commencer sur "Plus Joués"
+	let activeTabIndex = $state(1); // Commencer sur "Plus Joués"
 
 	onMount(() => {
 		loadRecentMaps();
 		loadPopularMaps();
 
-		// Gérer la navigation personnalisée
-		if (typeof window !== 'undefined') {
-			window.addEventListener('keydown', handleCustomNavigation);
+		// Créer le context de navigation
+		context = new MapSelectorContext({
+			onSelect: (index) => {
+				// Récupérer la map data depuis l'index passé par le context
+				if (displayedMaps[index]) {
+					handleSelectMap(displayedMaps[index]);
+				}
+			},
+			onCancel: handleCancelMapSelection
+		});
+	});
+
+	// Activer/désactiver le context selon visible
+	$effect(() => {
+		if (!context) return;
+
+		if (visible && !contextPushed) {
+			// Attendre que le dialog soit complètement rendu et ouvert
+			tick().then(() => tick()).then(() => {
+				navManager.pushContext(context);
+				contextPushed = true;
+			});
+		} else if (!visible && contextPushed) {
+			navManager.popContext();
+			contextPushed = false;
 		}
 	});
 
-	onDestroy(() => {
-		if (typeof window !== 'undefined') {
-			window.removeEventListener('keydown', handleCustomNavigation);
-		}
+	// Observer les changements de displayedMaps pour refresh le context
+	$effect(() => {
+		if (!context) return;
+		if (!visible) return;
+		
+		// Observer displayedMaps (déclenché quand l'onglet change)
+		const mapsCount = displayedMaps.length;
+		
+		// Attendre que le DOM soit mis à jour avec les nouvelles cartes
+		tick().then(() => {
+			if (context && navManager.activeContext === context) {
+				context.refresh();
+			}
+		});
 	});
-
-	// Gestion de la modal
-	$: if (dialogElement) {
-		if (visible) {
-			dialogElement.showModal();
-		} else {
-			dialogElement.close();
-		}
-	}
 
 	async function loadPopularMaps() {
 		try {
@@ -57,7 +83,7 @@
 
 			// Utiliser l'endpoint /maps/plays pour les maps les plus jouées
 			const response = await fetch('https://api.beatsaver.com/maps/plays/0');
-			
+
 			if (!response.ok) {
 				throw new Error(`Erreur API: ${response.status}`);
 			}
@@ -101,7 +127,6 @@
 
 	function changeTab(tab) {
 		activeTab = tab;
-		selectedMapIndex = 0; // Reset la sélection
 
 		if (tab === 'popular') {
 			loadPopularMaps();
@@ -118,70 +143,16 @@
 		}
 	}
 
-	// Navigation personnalisée: Gauche/Droite = onglets, Haut/Bas = maps
-	function handleCustomNavigation(event) {
-		if (!visible) return;
-
-		const key = event.key.toLowerCase();
-
-		// Gauche/Droite: changer d'onglet
-		if (key === 'q' || key === 'arrowleft') {
-			event.preventDefault();
-			const newIndex = activeTabIndex - 1;
-			if (newIndex >= 0) {
-				changeTabByIndex(newIndex);
-			}
-		} else if (key === 'd' || key === 'arrowright') {
-			event.preventDefault();
-			const newIndex = activeTabIndex + 1;
-			if (newIndex < tabs.length) {
-				changeTabByIndex(newIndex);
-			}
-		}
-		// Haut/Bas: naviguer dans les maps
-		else if (key === 'z' || key === 'arrowup') {
-			event.preventDefault();
-			if (selectedMapIndex > 0) {
-				selectedMapIndex--;
-				scrollToSelectedMap();
-			}
-		} else if (key === 's' || key === 'arrowdown') {
-			event.preventDefault();
-			if (selectedMapIndex < displayedMaps.length - 1) {
-				selectedMapIndex++;
-				scrollToSelectedMap();
-			}
-		}
-		// R/I: valider la sélection
-		else if (key === 'r' || key === 'i') {
-			event.preventDefault();
-			if (displayedMaps[selectedMapIndex]) {
-				handleSelectMap(displayedMaps[selectedMapIndex]);
-			}
-		}
-		// W/B ou X/N: annuler
-		else if (key === 'w' || key === 'b' || key === 'x' || key === 'n') {
-			event.preventDefault();
-			onCancel();
-		}
+	function handleCancelMapSelection() {
+		onCancel();
 	}
 
-	function scrollToSelectedMap() {
-		const mapCards = document.querySelectorAll('[data-map-card]');
-		if (mapCards[selectedMapIndex]) {
-			mapCards[selectedMapIndex].scrollIntoView({
-				behavior: 'smooth',
-				block: 'nearest'
-			});
-		}
-	}
-
-	$: displayedMaps = activeTab === 'recent' ? recentMaps : maps;
-	$: activeTab = tabs[activeTabIndex].id;
+	let displayedMaps = $derived(activeTab === 'recent' ? recentMaps : maps);
 </script>
 
-<dialog bind:this={dialogElement} class="modal modal-bottom sm:modal-middle">
-	<div class="modal-box bg-base-200/95 backdrop-blur-sm border-4 border-primary shadow-neon max-w-4xl h-[80vh] flex flex-col p-0">
+<BaseModal {visible} size="4xl" onClose={onCancel}>
+	<!-- Custom layout pour le sélecteur de maps -->
+	<div class="h-[80vh] flex flex-col -m-6">
 		<!-- Header -->
 		<div class="navbar bg-base-300/50 sticky top-0 z-10 border-b-2 border-primary/30">
 			<div class="flex-1 px-6">
@@ -192,7 +163,7 @@
 			<div class="flex-none px-4">
 				<button
 					class="btn btn-ghost btn-circle text-xl hover:text-error"
-					on:click={onCancel}
+					onclick={onCancel}
 					title="Retour (W/B ou X/N)"
 				>
 					❌
@@ -208,7 +179,7 @@
 					class="tab tab-lg font-bold transition-all"
 					class:tab-active={activeTabIndex === index}
 					class:opacity-50={!tab.enabled}
-					on:click={() => tab.enabled && changeTabByIndex(index)}
+					onclick={() => tab.enabled && changeTabByIndex(index)}
 					disabled={!tab.enabled}
 				>
 					{tab.label}
@@ -259,9 +230,4 @@
 			{/if}
 		</div>
 	</div>
-
-	<!-- Backdrop avec 3D visible -->
-	<form method="dialog" class="modal-backdrop bg-black/50">
-		<button on:click={onCancel}>close</button>
-	</form>
-</dialog>
+</BaseModal>
