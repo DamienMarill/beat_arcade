@@ -62,22 +62,49 @@ export class AudioManager {
 			this.gameAudio.volume = GameConfig.audioVolume;
 			this.gameAudio.preload = 'auto';
 
-			// Attendre le chargement
+			// Event listeners pour détecter les pauses automatiques
+			this.gameAudio.addEventListener('pause', () => {
+				console.warn('🚨 Audio mis en pause automatiquement!', {
+					currentTime: this.gameAudio.currentTime,
+					paused: this.gameAudio.paused,
+					ended: this.gameAudio.ended,
+					readyState: this.gameAudio.readyState
+				});
+			});
+
+			this.gameAudio.addEventListener('stalled', () => {
+				console.warn('⚠️ Audio stalled (buffering insuffisant)');
+			});
+
+			this.gameAudio.addEventListener('waiting', () => {
+				console.warn('⏳ Audio en attente de données');
+			});
+
+			this.gameAudio.addEventListener('suspend', () => {
+				console.warn('💤 Audio suspendu par le navigateur');
+			});
+
+			// Attendre le chargement COMPLET de l'audio
 			await new Promise((resolve, reject) => {
 				const timeout = setTimeout(() => {
 					reject(new Error('Timeout chargement audio'));
-				}, 10000);
+				}, 30000); // 30s pour les gros fichiers
 
-				this.gameAudio.addEventListener('loadeddata', () => {
+				// canplaythrough = tout le fichier est chargé et peut être joué sans interruption
+				this.gameAudio.addEventListener('canplaythrough', () => {
 					clearTimeout(timeout);
+					console.log('✅ Audio complètement chargé et prêt');
 					resolve();
-				});
+				}, { once: true });
 
 				this.gameAudio.addEventListener('error', (e) => {
 					clearTimeout(timeout);
 					console.error('❌ Erreur audio:', e);
 					reject(e);
 				});
+
+				// Forcer le chargement
+				this.gameAudio.load();
 			});
 
 			return true;
@@ -118,8 +145,19 @@ export class AudioManager {
 		}
 
 		try {
-			if (this.gameAudio.readyState < 2) {
-				await new Promise(resolve => setTimeout(resolve, 1000));
+			// Attendre que l'audio soit complètement prêt (readyState 4 = HAVE_ENOUGH_DATA)
+			if (this.gameAudio.readyState < 4) {
+				console.warn('⚠️ Audio pas complètement chargé, attente...');
+				await new Promise((resolve) => {
+					const checkReady = () => {
+						if (this.gameAudio.readyState >= 4) {
+							resolve();
+						} else {
+							setTimeout(checkReady, 100);
+						}
+					};
+					checkReady();
+				});
 			}
 
 			const playPromise = this.gameAudio.play();
@@ -127,6 +165,7 @@ export class AudioManager {
 			if (playPromise !== undefined) {
 				await playPromise;
 				this.isPlaying = true;
+				console.log('✅ Lecture audio démarrée');
 				return true;
 			}
 		} catch (error) {

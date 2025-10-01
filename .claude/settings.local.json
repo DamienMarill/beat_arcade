@@ -39,7 +39,8 @@
       "mcp__serena__insert_after_symbol",
       "mcp__serena__search_for_pattern",
       "mcp__playwright__browser_press_key",
-      "mcp__playwright__browser_evaluate"
+      "mcp__playwright__browser_evaluate",
+      "mcp__serena__replace_regex"
     ],
     "deny": [],
     "ask": []

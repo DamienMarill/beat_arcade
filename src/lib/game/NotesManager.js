@@ -28,6 +28,9 @@ export class NotesManager {
 		// État
 		this.lastLogTime = -1;
 		this.firstNoteShown = false;
+
+		// Optimisation: index de la prochaine note à spawn
+		this.nextNoteIndex = 0;
 	}
 
 	/**
@@ -236,71 +239,89 @@ export class NotesManager {
 
 	/**
 	 * Met à jour les notes basé sur le temps audio réel
+	 * OPTIMISÉ: Ne traite que les notes dans une fenêtre temporelle active
 	 */
 	update() {
 		// Obtenir le temps audio (peut être négatif pendant le délai de préparation)
 		const currentAudioTime = this.audioManager.getCurrentTime();
 		const cameraZ = this.cameraController.getPositionZ();
 
-		this.notes.forEach(noteObj => {
-			const { mesh, data } = noteObj;
-			const noteTime = data.time;
+		// Spawn de nouvelles notes (optimisation: commence où on s'est arrêté)
+		while (this.nextNoteIndex < this.notes.length) {
+			const noteObj = this.notes[this.nextNoteIndex];
+			const timeUntilHit = noteObj.data.time - currentAudioTime;
 
-			// Temps avant que la note doive être frappée
-			const timeUntilHit = noteTime - currentAudioTime;
+			// Si cette note n'est pas encore dans le lookahead, on arrête (notes triées par temps)
+			if (timeUntilHit > this.lookaheadTime) {
+				break;
+			}
 
-			// Spawn la note quand elle entre dans le lookahead
-			if (!noteObj.spawned && timeUntilHit <= this.lookaheadTime && timeUntilHit > -this.despawnTime) {
-				mesh.setEnabled(true);
+			// Spawn la note
+			if (!noteObj.spawned) {
+				noteObj.mesh.setEnabled(true);
 				noteObj.spawned = true;
 				noteObj.isVisible = true;
 			}
 
-			// Mettre à jour la position de la note visible
-			if (noteObj.isVisible && !noteObj.hit && !noteObj.missed) {
-				// Position de la barre de frappe (grille)
-				const hitBarZ = cameraZ + this.hitDistance;
+			this.nextNoteIndex++;
+		}
 
-				// Calculer la position Z basée sur le temps restant
-				// Quand timeUntilHit = 0 → note pile sur la barre
-				// Quand timeUntilHit > 0 → note devant la barre
-				const targetZ = hitBarZ + (timeUntilHit * this.cameraSpeedPerSecond);
-				mesh.position.z = targetZ;
+		// Mise à jour des notes actives uniquement
+		// Fenêtre temporelle: [currentTime - despawnTime, currentTime + lookaheadTime]
+		const minTime = currentAudioTime - this.despawnTime;
+		const maxTime = currentAudioTime + this.lookaheadTime;
 
-				// Distance de la barre de frappe
-				const distanceFromHitBar = Math.abs(targetZ - hitBarZ);
+		for (let i = 0; i < this.nextNoteIndex; i++) {
+			const noteObj = this.notes[i];
+			const noteTime = noteObj.data.time;
 
-				// Effets visuels de proximité
-				if (timeUntilHit > 0 && timeUntilHit < 1.0) {
-					const intensity = Math.max(0, (1.0 - timeUntilHit));
-					if (mesh.material) {
-						mesh.material.emissiveIntensity = 0.3 + intensity * 0.7;
+			// Skip si hors fenêtre temporelle active
+			if (noteTime < minTime || noteTime > maxTime) continue;
+			// Skip si déjà traitée
+			if (noteObj.hit || noteObj.missed || !noteObj.isVisible) continue;
 
-						if (distanceFromHitBar < 5) {
-							const scale = 1 + (5 - distanceFromHitBar) * 0.05;
-							mesh.scaling.setAll(scale);
-						} else {
-							mesh.scaling.setAll(1);
-						}
+			const { mesh } = noteObj;
+			const timeUntilHit = noteTime - currentAudioTime;
+
+			// Position de la barre de frappe (grille)
+			const hitBarZ = cameraZ + this.hitDistance;
+
+			// Calculer la position Z basée sur le temps restant
+			const targetZ = hitBarZ + (timeUntilHit * this.cameraSpeedPerSecond);
+			mesh.position.z = targetZ;
+
+			// Distance de la barre de frappe
+			const distanceFromHitBar = Math.abs(targetZ - hitBarZ);
+
+			// Effets visuels de proximité
+			if (timeUntilHit > 0 && timeUntilHit < 1.0) {
+				const intensity = Math.max(0, (1.0 - timeUntilHit));
+				if (mesh.material) {
+					mesh.material.emissiveIntensity = 0.3 + intensity * 0.7;
+
+					if (distanceFromHitBar < 5) {
+						const scale = 1 + (5 - distanceFromHitBar) * 0.05;
+						mesh.scaling.setAll(scale);
+					} else {
+						mesh.scaling.setAll(1);
 					}
-				}
-
-				// Zone de frappe visuelle
-				if (Math.abs(timeUntilHit) < this.hitWindow) {
-					if (mesh.material) {
-						mesh.material.emissiveIntensity = 1.0;
-					}
-				}
-
-				// Note manquée
-				if (timeUntilHit < -this.despawnTime) {
-					mesh.setEnabled(false);
-					noteObj.missed = true;
-					noteObj.isVisible = false;
 				}
 			}
-		});
 
+			// Zone de frappe visuelle
+			if (Math.abs(timeUntilHit) < this.hitWindow) {
+				if (mesh.material) {
+					mesh.material.emissiveIntensity = 1.0;
+				}
+			}
+
+			// Note manquée
+			if (timeUntilHit < -this.despawnTime) {
+				mesh.setEnabled(false);
+				noteObj.missed = true;
+				noteObj.isVisible = false;
+			}
+		}
 	}
 
 	/**

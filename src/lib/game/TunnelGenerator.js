@@ -10,6 +10,9 @@ export class TunnelGenerator {
 		this.segments = [];
 		this.speed = 0.1;
 
+		// Optimisation: stocker les matériaux rail pour l'animation
+		this.railMaterials = [];
+
 		this.createInitialSegments();
 	}
 
@@ -73,6 +76,9 @@ export class TunnelGenerator {
 		leftRail.material = railMaterial;
 		rightRail.material = railMaterial;
 
+		// Stocker le matériau rail pour l'animation
+		this.railMaterials.push(railMaterial);
+
 		segment.meshes.push(leftRail, rightRail);
 
 		// Anneaux décoratifs périodiques
@@ -117,15 +123,18 @@ export class TunnelGenerator {
 
 	/**
 	 * Animation des matériaux émissifs
+	 * OPTIMISÉ: Ne modifie que les matériaux rail stockés, pas tous les matériaux de la scène
 	 */
 	updateMaterialsAnimation() {
 		const time = performance.now() * 0.001;
 		const pulse = Math.sin(time * 3) * 0.2 + 0.8;
 
-		this.scene.materials.forEach(material => {
-			if (material.emissiveColor && material.name.includes('rail')) {
-				material.emissiveColor = new Color3(pulse, 0.3 * pulse, 0.8 * pulse);
-			}
+		// Ne mettre à jour QUE les matériaux rail (20 au lieu de 1179+)
+		this.railMaterials.forEach(material => {
+			// Réutiliser le même objet Color3 au lieu d'en créer un nouveau
+			material.emissiveColor.r = pulse;
+			material.emissiveColor.g = 0.3 * pulse;
+			material.emissiveColor.b = 0.8 * pulse;
 		});
 	}
 }

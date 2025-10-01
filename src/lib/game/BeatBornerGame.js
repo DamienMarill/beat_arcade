@@ -211,25 +211,45 @@ export class BeatBornerGame {
 	 */
 	async loadAudioFromZip(zipFiles) {
 		try {
+			console.log('🎮 Map ID:', this.currentMap?.id);
+			console.log('🎵 Map:', this.currentMap?.metadata?.songName);
+			console.log('⏱️ Durée attendue:', this.currentMap?.metadata?.duration, 'secondes');
+
 			const allFiles = Object.keys(zipFiles.files);
+			console.log('🔍 Fichiers dans le ZIP:', allFiles);
+
 			const audioExtensions = ['.ogg', '.mp3', '.wav', '.egg'];
 			let audioFile = null;
+			let audioFileName = null;
 
-			// Chercher le fichier audio
+			// Chercher le fichier audio avec noms standards
 			for (const extension of audioExtensions) {
-				audioFile = zipFiles.file(`song${extension}`) ||
-					zipFiles.file(`audio${extension}`) ||
-					zipFiles.file(`music${extension}`);
+				const candidates = [
+					`song${extension}`,
+					`audio${extension}`,
+					`music${extension}`
+				];
+
+				for (const candidate of candidates) {
+					audioFile = zipFiles.file(candidate);
+					if (audioFile) {
+						audioFileName = candidate;
+						break;
+					}
+				}
 				if (audioFile) break;
 			}
 
-			// Recherche plus large
+			// Si pas trouvé, chercher N'IMPORTE QUEL fichier avec extension audio
 			if (!audioFile) {
+				console.log('⚠️ Fichier audio standard non trouvé, recherche par extension...');
 				for (const fileName of allFiles) {
 					const lowerName = fileName.toLowerCase();
-					if ((lowerName.includes('song') || lowerName.includes('audio') || lowerName.includes('music')) &&
-						audioExtensions.some(ext => lowerName.endsWith(ext))) {
+					// Vérifier simplement si le fichier a une extension audio
+					if (audioExtensions.some(ext => lowerName.endsWith(ext))) {
 						audioFile = zipFiles.file(fileName);
+						audioFileName = fileName;
+						console.log('✅ Trouvé par extension:', fileName);
 						break;
 					}
 				}
@@ -237,14 +257,22 @@ export class BeatBornerGame {
 
 			// Fallback vers preview
 			if (!audioFile) {
+				console.warn('❌ Aucun fichier audio trouvé dans le ZIP!');
+				console.warn('🔄 Utilisation de la PREVIEW (10 secondes seulement!)');
+				console.warn('📍 Preview URL:', this.currentMap?.version.previewUrl);
 				if (this.currentMap?.version.previewUrl) {
 					await this.audioManager.loadAudio(this.currentMap.version.previewUrl);
 				}
 				return;
 			}
 
+			console.log('✅ Fichier audio trouvé dans le ZIP:', audioFileName);
+
 			// Charger l'audio depuis le blob
 			const audioBlob = await audioFile.async('blob');
+			console.log('📦 Taille du blob audio:', (audioBlob.size / 1024 / 1024).toFixed(2), 'MB');
+			console.log('📦 Type MIME du blob:', audioBlob.type);
+
 			await this.audioManager.loadAudio(audioBlob);
 
 		} catch (error) {
@@ -252,6 +280,7 @@ export class BeatBornerGame {
 
 			// Fallback
 			if (this.currentMap?.version.previewUrl) {
+				console.warn('🔄 Fallback vers preview URL (10s seulement!)');
 				await this.audioManager.loadAudio(this.currentMap.version.previewUrl);
 			}
 		}
