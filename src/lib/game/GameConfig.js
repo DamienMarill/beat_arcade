@@ -260,7 +260,71 @@ export const GameConfig = {
 	/**
 	 * Nombre de premières notes à logger au chargement
 	 */
-	debugNotesCount: 5
+	debugNotesCount: 5,
+
+	// ═══════════════════════════════════════════════════
+	// VIRAGES RYTHMIQUES
+	// ═══════════════════════════════════════════════════
+
+	/**
+	 * Configuration du générateur de chemin rythmique
+	 * Active les virages synchronisés avec les beats
+	 */
+	pathConfig: {
+		/**
+		 * Utiliser les beats musicaux (BPM) au lieu des notes du beatmap
+		 * - true = virages synchronisés au BPM de la musique (recommandé)
+		 * - false = virages basés sur les notes du beatmap
+		 */
+		useMusicalBeats: true,
+
+		/**
+		 * Amplitude latérale des virages (unités)
+		 * Déplacement ajouté à chaque virage (cumulatif)
+		 * - 0.5 = virages très subtils
+		 * - 1.0 = virages légers (recommandé)
+		 * - 1.5 = virages normaux
+		 * - 2.0 = virages prononcés
+		 */
+		curveAmplitude: 1.0,
+
+		/**
+		 * Rayon de courbure (unités)
+		 * Plus grand = virages plus doux
+		 * - 10.0 = virages serrés
+		 * - 15.0 = virages confortables
+		 * - 20.0 = virages très doux (recommandé)
+		 */
+		curveRadius: 60.0,
+
+		/**
+		 * Fréquence des virages (tous les X beats)
+		 * En mode musical: tous les X beats du BPM
+		 * En mode notes: tous les X moments avec des notes
+		 * - 4 = très fréquent
+		 * - 8 = fréquence normale
+		 * - 16 = espacés (recommandé)
+		 * - 32 = très espacés
+		 */
+		curveFrequency: 16,
+
+		/**
+		 * Amplitude verticale (montées/descentes en unités)
+		 * - 0.0 = désactivé (recommandé pour commencer)
+		 * - 0.5 = variations très légères
+		 * - 1.0 = variations légères
+		 * - 1.5 = variations normales
+		 */
+		verticalAmplitude: 0.5,
+
+		/**
+		 * Distance entre points de contrôle (unités)
+		 * - 5.0 = chemin très détaillé
+		 * - 10.0 = normal (recommandé)
+		 * - 15.0 = moins de détails
+		 */
+		segmentLength: 1.0
+	}
 };
 
 /**

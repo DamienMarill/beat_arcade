@@ -9,13 +9,15 @@ import { GameConfig, DerivedConfig } from './GameConfig.js';
  * Synchronisation basée sur le temps audio réel
  */
 export class NotesManager {
-	constructor(scene, cameraController, audioManager, callbacks = {}) {
+	constructor(scene, cameraController, audioManager, gridHelper, callbacks = {}) {
 		this.scene = scene;
 		this.cameraController = cameraController;
 		this.audioManager = audioManager;
+		this.gridHelper = gridHelper;
 		this.callbacks = callbacks;
 		this.notes = [];
 		this.gameplayData = null;
+		this.pathGenerator = null;
 
 		// Configuration depuis GameConfig
 		this.lookaheadTime = GameConfig.lookaheadTime;
@@ -32,6 +34,13 @@ export class NotesManager {
 
 		// Optimisation: index de la prochaine note à spawn
 		this.nextNoteIndex = 0;
+	}
+
+	/**
+	 * Définit le générateur de chemin pour positionner les notes
+	 */
+	setPathGenerator(pathGenerator) {
+		this.pathGenerator = pathGenerator;
 	}
 
 	/**
@@ -168,17 +177,8 @@ export class NotesManager {
 
 		const { mesh, data } = noteObj;
 
-		// IMPORTANT: Utiliser directement les positions de la grille !
-		const cameraZ = this.cameraController.getPositionZ();
-		const hitBarZ = cameraZ + this.hitDistance;
-
-		// Récupérer les positions monde de la grille depuis GameConfig
-		const gridPositions = GameConfig.grid.positions;
-		const particlePosition = new Vector3(
-			gridPositions.x[gridX],  // Position X exacte de la case de grille
-			gridPositions.y[gridY],  // Position Y exacte de la case de grille
-			hitBarZ                  // Position Z de la grille (caméra + 5)
-		);
+		// Utiliser GridHelper comme source de vérité pour la position des particules
+		const particlePosition = this.gridHelper.getGridCellWorldPosition(gridX, gridY);
 
 		// Créer un système de particules avec le grade
 		this.createHitParticles(particlePosition, data.type, grade);
@@ -188,7 +188,7 @@ export class NotesManager {
 
 		// Désactiver immédiatement la note
 		mesh.setEnabled(false);
-		
+
 		// Callback avec le grade et la position pour le scoring et l'UI
 		if (this.callbacks.onNoteHit) {
 			this.callbacks.onNoteHit(grade, timeOffset, gridX, gridY);
@@ -319,12 +319,35 @@ export class NotesManager {
 			// Position de la barre de frappe (grille)
 			const hitBarZ = cameraZ + this.hitDistance;
 
-			// Calculer la position Z basée sur le temps restant
-			const targetZ = hitBarZ + (timeUntilHit * this.cameraSpeedPerSecond);
-			mesh.position.z = targetZ;
+			// Calculer la distance sur le chemin où la note devrait être
+			const cameraDistance = this.cameraController.getDistanceTraveled
+				? this.cameraController.getDistanceTraveled()
+				: cameraZ;
+			const noteDistance = cameraDistance + this.hitDistance + (timeUntilHit * this.cameraSpeedPerSecond);
 
-			// Distance de la barre de frappe
-			const distanceFromHitBar = Math.abs(targetZ - hitBarZ);
+			// Si on a un PathGenerator, utiliser le chemin
+			if (this.pathGenerator) {
+				// Utiliser GridHelper comme source de vérité pour la position
+				const worldPosition = this.gridHelper.getGridCellWorldPositionAtDistance(
+					noteObj.data.x,
+					noteObj.data.y,
+					noteDistance
+				);
+
+				mesh.position.copyFrom(worldPosition);
+
+				// Orienter la note pour qu'elle soit perpendiculaire au chemin
+				const pathData = this.pathGenerator.getPositionAtDistance(noteDistance);
+				const forward = pathData.tangent;
+				mesh.rotation.y = Math.atan2(forward.x, forward.z);
+			} else {
+				// Mode classique : ligne droite
+				const targetZ = hitBarZ + (timeUntilHit * this.cameraSpeedPerSecond);
+				mesh.position.z = targetZ;
+			}
+
+			// Distance de la barre de frappe (calculer depuis la position réelle)
+			const distanceFromHitBar = Vector3.Distance(mesh.position, this.cameraController.getCamera().position) - this.hitDistance;
 
 			// Effets visuels de proximité
 			if (timeUntilHit > 0 && timeUntilHit < 1.0) {

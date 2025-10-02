@@ -2,27 +2,117 @@
  * Helper pour visualiser et gérer la grille 4x2 dans le jeu
  * Gère l'affichage des guides et la validation des positions
  */
-import { MeshBuilder, StandardMaterial, Color3 } from '@babylonjs/core';
+import { MeshBuilder, StandardMaterial, Color3, Vector3 } from '@babylonjs/core';
 
 export class GridHelper {
-    constructor(scene, camera = null) {
+    constructor(scene, camera = null, cameraController = null, pathGenerator = null) {
         this.scene = scene;
         this.camera = camera; // Référence à la caméra pour le suivi
+        this.cameraController = cameraController;
+        this.pathGenerator = null;
         this.gridMeshes = [];
         this.showGrid = false;
         this.followCamera = true; // Active le suivi de caméra par défaut
 
-        // Configuration de la grille 4x2
+        // Configuration de la grille 4x2 (positions LOCALES)
         this.gridConfig = {
             columns: 4,      // X: 0, 1, 2, 3
             rows: 2,         // Y: 0 (bas), 1 (haut)
             positions: {
-                // Positions monde correspondant à chaque case de la grille
+                // Positions LOCALES (par rapport au chemin)
                 x: [-1.5, -0.5, 0.5, 1.5],    // 4 colonnes
                 y: [0.8, 2.0]                  // 2 hauteurs (bas, haut)
             },
             offsetZ: 5 // Distance devant la caméra pour la "barre de lecture"
         };
+    }
+
+    /**
+     * Définit le PathGenerator pour les virages rythmiques
+     */
+    setPathGenerator(pathGenerator) {
+        this.pathGenerator = pathGenerator;
+    }
+
+    /**
+     * Obtient la position mondiale réelle d'une case de grille
+     * C'est la SOURCE DE VÉRITÉ pour toutes les positions de grille !
+     * @param {number} gridX - Colonne (0-3)
+     * @param {number} gridY - Ligne (0-1)
+     * @returns {Vector3} Position mondiale de la case
+     */
+    getGridCellWorldPosition(gridX, gridY) {
+        if (!this.isValidGridPosition(gridX, gridY)) {
+            console.warn(`Position de grille invalide: ${gridX}, ${gridY}`);
+            return new Vector3(0, 1.4, 0);
+        }
+
+        const localX = this.gridConfig.positions.x[gridX];
+        const localY = this.gridConfig.positions.y[gridY];
+
+        if (this.pathGenerator && this.cameraController) {
+            // Mode chemin rythmique : calculer la position sur le chemin
+            const cameraDistance = this.cameraController.getDistanceTraveled
+                ? this.cameraController.getDistanceTraveled()
+                : this.cameraController.getPositionZ();
+            const hitDistance = cameraDistance + this.gridConfig.offsetZ;
+            const pathData = this.pathGenerator.getPositionAtDistance(hitDistance);
+
+            // Calculer les vecteurs locaux du chemin
+            const forward = pathData.tangent;
+            const right = new Vector3(-forward.z, 0, forward.x).normalize();
+            const up = new Vector3(0, 1, 0);
+
+            // Position de base sur le chemin
+            const basePosition = pathData.position;
+
+            // Position mondiale dans le repère local du chemin
+            return basePosition
+                .add(right.scale(localX))
+                .add(up.scale(localY - 2)); // -2 car le chemin est à Y=2
+        } else {
+            // Mode classique : ligne droite
+            const cameraZ = this.camera ? this.camera.position.z : 0;
+            const hitBarZ = cameraZ + this.gridConfig.offsetZ;
+
+            return new Vector3(localX, localY, hitBarZ);
+        }
+    }
+
+    /**
+     * Obtient la position mondiale à une distance donnée sur le chemin
+     * Utilisé pour positionner les notes à l'avance
+     * @param {number} gridX - Colonne (0-3)
+     * @param {number} gridY - Ligne (0-1)
+     * @param {number} distance - Distance sur le chemin
+     * @returns {Vector3} Position mondiale
+     */
+    getGridCellWorldPositionAtDistance(gridX, gridY, distance) {
+        if (!this.isValidGridPosition(gridX, gridY)) {
+            console.warn(`Position de grille invalide: ${gridX}, ${gridY}`);
+            return new Vector3(0, 1.4, distance);
+        }
+
+        const localX = this.gridConfig.positions.x[gridX];
+        const localY = this.gridConfig.positions.y[gridY];
+
+        if (this.pathGenerator) {
+            // Mode chemin rythmique
+            const pathData = this.pathGenerator.getPositionAtDistance(distance);
+
+            // Calculer les vecteurs locaux
+            const forward = pathData.tangent;
+            const right = new Vector3(-forward.z, 0, forward.x).normalize();
+            const up = new Vector3(0, 1, 0);
+
+            // Position mondiale
+            return pathData.position
+                .add(right.scale(localX))
+                .add(up.scale(localY - 2));
+        } else {
+            // Mode classique
+            return new Vector3(localX, localY, distance);
+        }
     }
 
     /**
@@ -162,23 +252,58 @@ export class GridHelper {
 
     /**
      * Met à jour la position de la grille pour suivre la caméra
+     * Maintenant supporte aussi la rotation pour les virages rythmiques
      */
     updateGridPosition() {
         if (!this.followCamera || !this.camera || !this.showGrid) return;
 
-        // Nouvelle position Z basée sur la caméra
-        const newGridZ = this.camera.position.z + this.gridConfig.offsetZ;
+        // Obtenir la direction de la caméra
+        const cameraForward = this.camera.getDirection(new Vector3(0, 0, 1));
+        const cameraRight = this.camera.getDirection(new Vector3(1, 0, 0));
+        const cameraUp = this.camera.getDirection(new Vector3(0, 1, 0));
+
+        // Position de base de la grille (devant la caméra)
+        const gridBasePosition = this.camera.position.add(
+            cameraForward.scale(this.gridConfig.offsetZ)
+        );
 
         // Mettre à jour tous les mesh de la grille
         this.gridMeshes.forEach(mesh => {
-            // Préserver les positions X et Y, mettre à jour seulement Z
-            if (mesh.name.includes('gridLine')) {
-                mesh.position.z = newGridZ - 0.1; // Lignes légèrement derrière
-            } else {
-                mesh.position.z = newGridZ;        // Guides au niveau principal
+            const metadata = mesh.metadata;
+
+            if (metadata && typeof metadata.gridX !== 'undefined' && typeof metadata.gridY !== 'undefined') {
+                // Mesh de guide de grille
+                const gridX = metadata.gridX;
+                const gridY = metadata.gridY;
+
+                // Position locale dans le repère de la caméra
+                const localX = this.gridConfig.positions.x[gridX];
+                const localY = this.gridConfig.positions.y[gridY];
+
+                // Calculer la position mondiale
+                const worldPosition = gridBasePosition
+                    .add(cameraRight.scale(localX))
+                    .add(cameraUp.scale(localY - 2)); // -2 car la caméra est à y=2
+
+                mesh.position.copyFrom(worldPosition);
+
+                // Orienter le mesh pour qu'il soit face à la caméra
+                mesh.rotation.y = Math.atan2(cameraForward.x, cameraForward.z);
+                mesh.rotation.x = -Math.asin(cameraForward.y);
+
+            } else if (mesh.name.includes('gridLine')) {
+                // Lignes de délimitation - légèrement en arrière
+                const linePosition = gridBasePosition.add(
+                    cameraForward.scale(-0.1)
+                );
+
+                mesh.position.copyFrom(linePosition);
+
+                // Orienter les lignes
+                mesh.rotation.y = Math.atan2(cameraForward.x, cameraForward.z);
+                mesh.rotation.x = -Math.asin(cameraForward.y);
             }
         });
-
     }
 
     /**

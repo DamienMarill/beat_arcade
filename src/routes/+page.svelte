@@ -290,25 +290,27 @@
 	
 	function convertGridToScreen(gridX, gridY) {
 	if (!game || !canvas) return null;
-	
+
 	const scene = game.sceneManager?.getScene();
 	const camera = game.cameraController?.getCamera();
 	if (!scene || !camera) return null;
-	
+
 	// Accéder à BABYLON via le scene (pas de variable globale en Svelte)
 	const engine = scene.getEngine();
 	const BABYLON = scene.getEngine().constructor.prototype.constructor;
-	
-	// Récupérer les positions monde de la grille
-	const gridPositions = GameConfig.grid.positions;
-	const cameraZ = game.cameraController.getPositionZ();
-	const hitBarZ = cameraZ + GameConfig.hitDistance;
-	
-	// Position 3D de la case de grille
+
+	// Utiliser GridHelper comme source de vérité pour la position 3D
+	const worldPosition = game.gridHelper?.getGridCellWorldPosition(gridX, gridY);
+	if (!worldPosition) {
+		console.warn('GridHelper non disponible ou position invalide');
+		return null;
+	}
+
+	// Convertir Vector3 en objet simple pour la projection
 	const worldPos = {
-		x: gridPositions.x[gridX],
-		y: gridPositions.y[gridY],
-		z: hitBarZ
+		x: worldPosition.x,
+		y: worldPosition.y,
+		z: worldPosition.z
 	};
 	
 	// Convertir en coordonnées écran via les méthodes du scene

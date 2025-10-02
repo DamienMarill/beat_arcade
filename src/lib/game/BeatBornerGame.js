@@ -7,6 +7,7 @@ import { LightingManager } from './LightingManager.js';
 import { InputManager } from './InputManager.js';
 import GridHelper from './GridHelper.js';
 import { ScoreManager } from './ScoreManager.js';
+import { PathGenerator } from './PathGenerator.js';
 import { GameConfig } from './GameConfig.js';
 import { beatSaverService } from '../../services/BeatSaverService.js';
 import { beatMapParser } from '../../services/BeatMapParser.js';
@@ -32,6 +33,7 @@ export class BeatBornerGame {
 		this.inputManager = null;
 		this.gridHelper = null;
 		this.scoreManager = null;
+		this.pathGenerator = null;
 
 		// État du jeu
 		this.currentMap = null;
@@ -65,7 +67,10 @@ export class BeatBornerGame {
 				this.musicEndTime = performance.now();
 			}
 		});
-		
+
+		// Initialiser le helper de grille (AVANT NotesManager pour qu'il puisse l'utiliser)
+		this.gridHelper = new GridHelper(scene, this.cameraController.getCamera(), this.cameraController);
+
 		// Créer le ScoreManager avec callbacks pour l'UI
 		this.scoreManager = new ScoreManager({
 			onScoreUpdate: (data) => {
@@ -84,13 +89,13 @@ export class BeatBornerGame {
 				}
 			}
 		});
-		
-		// Créer le NotesManager avec callback pour le scoring
-		this.notesManager = new NotesManager(scene, this.cameraController, this.audioManager, {
+
+		// Créer le NotesManager avec callback pour le scoring ET gridHelper
+		this.notesManager = new NotesManager(scene, this.cameraController, this.audioManager, this.gridHelper, {
 			onNoteHit: (grade, timeOffset, gridX, gridY) => {
 				// Enregistrer le hit dans le ScoreManager
 				this.scoreManager.registerHit(grade);
-				
+
 				// Callback vers l'UI si nécessaire
 				if (this.callbacks.onNoteHit) {
 					this.callbacks.onNoteHit(grade, timeOffset, gridX, gridY);
@@ -99,18 +104,15 @@ export class BeatBornerGame {
 			onNoteMiss: (note, gridX, gridY) => {
 				// Enregistrer le miss dans le ScoreManager
 				this.scoreManager.registerMiss();
-				
+
 				// Callback vers l'UI si nécessaire
 				if (this.callbacks.onNoteMiss) {
 					this.callbacks.onNoteMiss(note, gridX, gridY);
 				}
 			}
 		});
-		
-		this.inputManager = new InputManager();
 
-		// Initialiser le helper de grille
-		this.gridHelper = new GridHelper(scene, this.cameraController.getCamera());
+		this.inputManager = new InputManager();
 
 		// Connecter les inputs aux notes
 		this.setupInputHandling();
@@ -233,6 +235,19 @@ export class BeatBornerGame {
 
 			// Charger l'audio
 			await this.loadAudioFromZip(zipFiles);
+
+			// Générer le chemin rythmique basé sur le BPM de la musique
+			this.pathGenerator = new PathGenerator(
+				this.gameplayData,
+				GameConfig.pathConfig,
+				this.currentMap.metadata.bpm
+			);
+
+			// Connecter le chemin à la caméra, au tunnel, à la grille et aux notes
+			this.cameraController.setPathGenerator(this.pathGenerator);
+			this.tunnelGenerator.setPathGenerator(this.pathGenerator);
+			this.gridHelper.setPathGenerator(this.pathGenerator);
+			this.notesManager.setPathGenerator(this.pathGenerator);
 
 			// Créer les notes
 			this.notesManager.setGameplayData(this.gameplayData);
