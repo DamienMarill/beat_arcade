@@ -167,12 +167,12 @@ export class BeatMapParser {
             bpm,
             secondsPerBeat,
 
-            // Notes converties en temps réel avec conversion 4x3 -> 4x2
+            // Notes converties en temps réel avec conversion 4x3 -> 4x4 (cercle)
             notes: notes.map(note => {
                 const originalX = note.lineIndex !== undefined ? note.lineIndex : note.x;
                 const originalY = note.lineLayer !== undefined ? note.lineLayer : note.y;
 
-                // Conversion de la grille 4x3 vers 4x2
+                // Conversion de la grille 4x3 Beat Saber vers 4x4 cercle
                 const convertedPos = this.convertGridTo4x2(originalX, originalY);
 
                 return {
@@ -184,12 +184,12 @@ export class BeatMapParser {
                     type: note.type !== undefined ? note.type : note.color,
                     direction: note.cutDirection !== undefined ? note.cutDirection : note.direction,
 
-                    // Position 3D pour Babylon.js (après conversion 4x2)
+                    // Position 3D pour Babylon.js (après conversion 4x4)
                     position3D: this.gridToWorldPosition(convertedPos.x, convertedPos.y)
                 };
             }),
 
-            // Obstacles avec conversion 4x3 -> 4x2
+            // Obstacles avec conversion 4x3 -> 4x4 (cercle)
             obstacles: obstacles.map(obstacle => {
                 const originalX = obstacle.lineIndex !== undefined ? obstacle.lineIndex : obstacle.x;
                 const originalY = obstacle.y || 0;
@@ -205,19 +205,19 @@ export class BeatMapParser {
                     originalX: originalX,
                     originalY: originalY,
                     width: obstacle.width || obstacle.w || 1,
-                    height: obstacle.height || obstacle.h || (obstacle.type === 0 ? 2 : 1), // Adapté pour 4x2
+                    height: obstacle.height || obstacle.h || (obstacle.type === 0 ? 4 : 1), // Adapté pour 4x4
                     type: obstacle.type,
 
                     // Position et taille 3D (après conversion)
                     position3D: this.gridToWorldPosition(convertedPos.x, convertedPos.y),
                     scale3D: {
                         width: obstacle.width || obstacle.w || 1,
-                        height: obstacle.height || obstacle.h || (obstacle.type === 0 ? 2 : 1) // Max 2 hauteurs
+                        height: obstacle.height || obstacle.h || (obstacle.type === 0 ? 4 : 1) // Max 4 hauteurs
                     }
                 };
             }),
 
-            // Bombes avec conversion 4x3 -> 4x2
+            // Bombes avec conversion 4x3 -> 4x4 (cercle)
             bombs: bombs.map(bomb => {
                 const originalX = bomb.lineIndex !== undefined ? bomb.lineIndex : bomb.x;
                 const originalY = bomb.lineLayer !== undefined ? bomb.lineLayer : bomb.y;
@@ -246,38 +246,58 @@ export class BeatMapParser {
     }
 
     /**
-     * Convertit la grille Beat Saber (4x3) vers grille jeu (4x2)
-     * Ligne du milieu (y=1) -> bas (y=0)
+     * Convertit la grille Beat Saber (4x3) vers grille jeu 4x4 (motif cercle)
+     * Mappe les 12 positions BS vers les 8 positions actives du cercle
      * @private
      */
     convertGridTo4x2(x, y) {
-        // Conversion 4x3 vers 4x2 :
-        // Y=2 (haut)   -> Y=1 (haut dans 4x2)
-        // Y=1 (milieu) -> Y=0 (bas dans 4x2)
-        // Y=0 (bas)    -> Y=0 (bas dans 4x2)
+        // Conversion 4x3 Beat Saber -> 4x4 cercle :
+        //
+        // BS y=2 (haut)   -> Ligne 3 du cercle (centre: t, i)
+        // BS y=1 (milieu) -> Lignes 1 et 2 du cercle (côtés: f, l, r, o)
+        // BS y=0 (bas)    -> Ligne 0 du cercle (centre: g, k)
 
-        let newY;
+        let newX, newY;
+
         if (y === 2) {
-            newY = 1; // Haut reste en haut
+            // Haut Beat Saber -> Centre haut du cercle (ligne 3)
+            newY = 3;
+            newX = x <= 1 ? 1 : 2; // Gauche -> t, Droite -> i
+        } else if (y === 1) {
+            // Milieu Beat Saber -> Côtés du cercle (lignes 1 et 2)
+            if (x === 0) {
+                newX = 0; newY = 2; // Gauche -> r
+            } else if (x === 1) {
+                newX = 0; newY = 1; // Centre-gauche -> f
+            } else if (x === 2) {
+                newX = 3; newY = 1; // Centre-droit -> l
+            } else {
+                newX = 3; newY = 2; // Droit -> o
+            }
         } else {
-            newY = 0; // Milieu et bas vont en bas
+            // Bas Beat Saber -> Centre bas du cercle (ligne 0)
+            newY = 0;
+            newX = x <= 1 ? 1 : 2; // Gauche -> g, Droite -> k
         }
 
-        return { x, y: newY };
+        return { x: newX, y: newY };
     }
 
     /**
-     * Convertit la grille jeu (4x2) en position monde 3D
+     * Convertit la grille jeu 4x4 en position monde 3D
      * @private
      */
     gridToWorldPosition(x, y) {
-        // Conversion de la grille 4x2 vers positions monde
-        // X: 0-3 -> positions de -1.5 à 1.5
-        // Y: 0-1 -> positions bas (0.8) et haut (2.0)
+        // Conversion de la grille 4x4 vers positions monde
+        // X: 0-3 -> positions [-1.5, -0.5, 0.5, 1.5]
+        // Y: 0-3 -> positions [0.5, 1.5, 2.5, 3.5]
+        const xPositions = [-1.5, -0.5, 0.5, 1.5];
+        const yPositions = [0.5, 1.5, 2.5, 3.5];
+
         return {
-            x: (x - 1.5) * 1.0,         // Espacement horizontal
-            y: y === 0 ? 0.8 : 2.0,     // Seulement 2 hauteurs : bas et haut
-            z: 0                        // Les objets apparaissent devant le joueur
+            x: xPositions[x],
+            y: yPositions[y],
+            z: 0  // Les objets apparaissent devant le joueur
         };
     }
 

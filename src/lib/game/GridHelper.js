@@ -14,14 +14,14 @@ export class GridHelper {
         this.showGrid = false;
         this.followCamera = true; // Active le suivi de caméra par défaut
 
-        // Configuration de la grille 4x2 (positions LOCALES)
+        // Configuration de la grille 4x4 (positions LOCALES)
         this.gridConfig = {
             columns: 4,      // X: 0, 1, 2, 3
-            rows: 2,         // Y: 0 (bas), 1 (haut)
+            rows: 4,         // Y: 0 (bas), 1, 2, 3 (haut)
             positions: {
                 // Positions LOCALES (par rapport au chemin)
-                x: [-1.5, -0.5, 0.5, 1.5],    // 4 colonnes
-                y: [0.8, 2.0]                  // 2 hauteurs (bas, haut)
+                x: [-1.5, -0.5, 0.5, 1.5],    // 4 colonnes espacées de 1.0
+                y: [0.5, 1.5, 2.5, 3.5]        // 4 hauteurs espacées de 1.0 (grille carrée)
             },
             offsetZ: 5 // Distance devant la caméra pour la "barre de lecture"
         };
@@ -125,34 +125,44 @@ export class GridHelper {
         guideMaterial.emissiveColor = new Color3(0.2, 0.8, 0.2);
         guideMaterial.alpha = 0.3;
 
-        // Créer des cubes de guidage pour chaque position
-        for (let x = 0; x < this.gridConfig.columns; x++) {
-            for (let y = 0; y < this.gridConfig.rows; y++) {
-                const guide = MeshBuilder.CreateBox(
-                    `gridGuide_${x}_${y}`,
-                    { width: 0.8, height: 0.8, depth: 0.1 },
-                    this.scene
-                );
+        // Positions actives en cercle (selon le mapping des touches)
+        const activePositions = [
+            { x: 1, y: 0 }, // g
+            { x: 2, y: 0 }, // k
+            { x: 0, y: 1 }, // f
+            { x: 3, y: 1 }, // l
+            { x: 0, y: 2 }, // r
+            { x: 3, y: 2 }, // o
+            { x: 1, y: 3 }, // t
+            { x: 2, y: 3 }  // i
+        ];
 
-                // Position initiale basée sur la caméra
-                const gridZ = this.camera ?
-                    this.camera.position.z + this.gridConfig.offsetZ :
-                    this.gridConfig.offsetZ;
+        // Créer des cubes de guidage uniquement pour les positions actives
+        activePositions.forEach(pos => {
+            const guide = MeshBuilder.CreateBox(
+                `gridGuide_${pos.x}_${pos.y}`,
+                { width: 0.8, height: 0.8, depth: 0.1 }, // Réduit de 0.8 à 0.5
+                this.scene
+            );
 
-                guide.position.set(
-                    this.gridConfig.positions.x[x],
-                    this.gridConfig.positions.y[y],
-                    gridZ
-                );
+            // Position initiale basée sur la caméra
+            const gridZ = this.camera ?
+                this.camera.position.z + this.gridConfig.offsetZ :
+                this.gridConfig.offsetZ;
 
-                guide.material = guideMaterial;
+            guide.position.set(
+                this.gridConfig.positions.x[pos.x],
+                this.gridConfig.positions.y[pos.y],
+                gridZ
+            );
 
-                // Stocker la position pour référence
-                guide.metadata = { gridX: x, gridY: y };
+            guide.material = guideMaterial;
 
-                this.gridMeshes.push(guide);
-            }
-        }
+            // Stocker la position pour référence
+            guide.metadata = { gridX: pos.x, gridY: pos.y };
+
+            this.gridMeshes.push(guide);
+        });
 
         // Ajouter des lignes de délimitation
         // this.addGridLines();

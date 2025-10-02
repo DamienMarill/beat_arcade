@@ -136,21 +136,21 @@ export const GameConfig = {
 	 * - 0.7 = normal (actuel)
 	 * - 1.0 = volume max
 	 */
-	audioVolume: 0.7,
+	audioVolume: 0.5,
 
 	// ═══════════════════════════════════════════════════
 	// GRILLE DE JEU
 	// ═══════════════════════════════════════════════════
 
 	/**
-	 * Configuration de la grille 4×2
+	 * Configuration de la grille 4×4 (motif en cercle)
 	 */
 	grid: {
 		columns: 4,
-		rows: 2,
+		rows: 4,
 		positions: {
-			x: [-1.5, -0.5, 0.5, 1.5],  // Positions horizontales
-			y: [0.8, 2.0]                // Positions verticales (bas, haut)
+			x: [-1.5, -0.5, 0.5, 1.5],     // Positions horizontales (espacement 1.0)
+			y: [0.5, 1.5, 2.5, 3.5]         // Positions verticales (espacement 1.0 - grille carrée)
 		},
 		offsetZ: 5  // Distance devant caméra (doit = hitDistance)
 	},
@@ -197,22 +197,28 @@ export const GameConfig = {
 	// ═══════════════════════════════════════════════════
 
 	/**
-	 * Mapping des touches pour la grille 4×2
-	 * Ligne du haut (row 1): R T I O (colonnes 0-3)
-	 * Ligne du bas (row 0): F G K L (colonnes 0-3)
+	 * Mapping des touches pour la grille 4×4 (motif en cercle)
+	 * l3 (y=3): x, t, i, x
+	 * l2 (y=2): r, x, x, o
+	 * l1 (y=1): f, x, x, l
+	 * l0 (y=0): x, g, k, x
 	 */
 	keyBindings: {
-		// Ligne du bas (y = 0)
-		'f': { x: 2, y: 0 },  // Colonne gauche, ligne basse
-		'g': { x: 3, y: 0 },  // Colonne centre-gauche, ligne basse
-		'k': { x: 0, y: 0 },  // Colonne centre-droite, ligne basse
-		'l': { x: 1, y: 0 },  // Colonne droite, ligne basse
+		// Ligne 0 (bas) - y=0: x, g, k, x
+		'g': { x: 1, y: 0 },  // Colonne centre-gauche
+		'k': { x: 2, y: 0 },  // Colonne centre-droite
 
-		// Ligne du haut (y = 1)
-		'r': { x: 2, y: 1 },  // Colonne gauche, ligne haute
-		't': { x: 3, y: 1 },  // Colonne centre-gauche, ligne haute
-		'i': { x: 0, y: 1 },  // Colonne centre-droite, ligne haute
-		'o': { x: 1, y: 1 }   // Colonne droite, ligne haute
+		// Ligne 1 - y=1: f, x, x, l
+		'f': { x: 0, y: 1 },  // Colonne gauche
+		'l': { x: 3, y: 1 },  // Colonne droite
+
+		// Ligne 2 - y=2: r, x, x, o
+		'r': { x: 0, y: 2 },  // Colonne gauche
+		'o': { x: 3, y: 2 },  // Colonne droite
+
+		// Ligne 3 (haut) - y=3: x, t, i, x
+		't': { x: 1, y: 3 },  // Colonne centre-gauche
+		'i': { x: 2, y: 3 }   // Colonne centre-droite
 	},
 
 	// ═══════════════════════════════════════════════════
