@@ -1,4 +1,4 @@
-import { MeshBuilder, StandardMaterial, Color3, CreateGround, Vector3, Quaternion, Curve3 } from '@babylonjs/core';
+import { MeshBuilder, StandardMaterial, Color3, CreateGround, Vector3, Quaternion, Curve3, DynamicTexture } from '@babylonjs/core';
 
 /**
  * Génère et gère les segments du tunnel infini
@@ -20,6 +20,10 @@ export class TunnelGenerator {
 		this.rightRailMesh = null;
 		this.railMaterial = null;
 
+		// Sol continu (segments individuels qui suivent le chemin)
+		this.groundSegments = [];
+		this.groundMaterial = null;
+
 		this.createInitialSegments();
 	}
 
@@ -32,6 +36,7 @@ export class TunnelGenerator {
 		// Recréer les segments initiaux avec le nouveau chemin
 		this.disposeSegments();
 		this.createContinuousRails();
+		this.createContinuousGround();
 		this.createInitialSegments();
 	}
 
@@ -61,9 +66,9 @@ export class TunnelGenerator {
 			// Vecteur perpendiculaire (droite)
 			const right = new Vector3(tangent.z, 0, -tangent.x).normalize();
 
-			// Positions des rails (1.5 unités de chaque côté)
-			const leftPoint = point.add(right.scale(-1.5));
-			const rightPoint = point.add(right.scale(1.5));
+			// Positions des rails (2.5 unités de chaque côté - contre les parois des anneaux)
+			const leftPoint = point.add(right.scale(-2.5));
+			const rightPoint = point.add(right.scale(2.5));
 
 			leftRailPoints.push(leftPoint);
 			rightRailPoints.push(rightPoint);
@@ -96,6 +101,98 @@ export class TunnelGenerator {
 	}
 
 	/**
+	 * Crée un sol continu (segments individuels) qui suit le chemin
+	 * Positionné 15m en dessous du joueur (Y=-13 car joueur à Y=2)
+	 * Utilise des segments plats pour éviter le z-fighting des ribbons
+	 */
+	createContinuousGround() {
+		if (!this.pathGenerator) return;
+
+		// Créer le matériau béton partagé par tous les segments
+		this.groundMaterial = new StandardMaterial('groundMat', this.scene);
+
+		// Créer une texture procédurale de béton
+		const texture = new DynamicTexture('concreteTexture', 512, this.scene, false);
+		const ctx = texture.getContext();
+
+		// Fond gris béton
+		ctx.fillStyle = '#4a4a4a';
+		ctx.fillRect(0, 0, 512, 512);
+
+		// Ajouter du bruit pour effet béton
+		for (let i = 0; i < 5000; i++) {
+			const x = Math.random() * 512;
+			const y = Math.random() * 512;
+			const shade = Math.floor(Math.random() * 60) - 30;
+			const gray = 74 + shade;
+			ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`;
+			ctx.fillRect(x, y, 2, 2);
+		}
+
+		// Ajouter quelques lignes de fissures
+		ctx.strokeStyle = '#3a3a3a';
+		ctx.lineWidth = 1;
+		for (let i = 0; i < 20; i++) {
+			ctx.beginPath();
+			const startX = Math.random() * 512;
+			const startY = Math.random() * 512;
+			ctx.moveTo(startX, startY);
+			ctx.lineTo(startX + (Math.random() * 100 - 50), startY + (Math.random() * 100 - 50));
+			ctx.stroke();
+		}
+
+		texture.update();
+
+		this.groundMaterial.diffuseTexture = texture;
+		this.groundMaterial.diffuseTexture.uScale = 5; // Répéter la texture
+		this.groundMaterial.diffuseTexture.vScale = 5;
+		this.groundMaterial.specularColor = new Color3(0.1, 0.1, 0.1); // Peu de brillance
+		this.groundMaterial.ambientColor = new Color3(0.3, 0.3, 0.3);
+		this.groundMaterial.backFaceCulling = true;
+
+		// Créer des segments de sol
+		const pathPoints = this.pathGenerator.getPoints();
+		const groundWidth = 55; // Largeur du sol
+		const segmentLength = 15; // Longueur de chaque segment
+		const step = 10; // Un segment tous les 10 points
+
+		for (let i = 0; i < pathPoints.length - step; i += step) {
+			const point = pathPoints[i];
+			const nextPoint = pathPoints[Math.min(i + step, pathPoints.length - 1)];
+
+			// Calculer la tangente (direction du chemin)
+			const tangent = nextPoint.subtract(point).normalize();
+
+			// Vecteur perpendiculaire (droite)
+			const right = new Vector3(tangent.z, 0, -tangent.x).normalize();
+
+			// Position du centre du segment à Y=-13
+			const centerPos = new Vector3(point.x, -13, point.z);
+
+			// Créer un ground plane individuel
+			const segment = CreateGround(`groundSeg_${i}`, {
+				width: groundWidth,
+				height: segmentLength
+			}, this.scene);
+
+			// Positionner le segment
+			segment.position.copyFrom(centerPos);
+
+			// Orienter selon la tangente du chemin
+			const angle = Math.atan2(tangent.x, tangent.z);
+			segment.rotation.y = angle;
+
+			// Appliquer le matériau partagé
+			segment.material = this.groundMaterial;
+
+			// Stocker le segment
+			this.groundSegments.push(segment);
+		}
+
+		console.log('✅ Sol créé avec', this.groundSegments.length, 'segments individuels');
+	}
+
+	/**
 	 * Dispose tous les segments
 	 */
 	disposeSegments() {
@@ -117,6 +214,18 @@ export class TunnelGenerator {
 		if (this.railMaterial) {
 			this.railMaterial.dispose();
 			this.railMaterial = null;
+		}
+
+		// Disposer les segments de sol
+		this.groundSegments.forEach(segment => segment.dispose());
+		this.groundSegments = [];
+
+		if (this.groundMaterial) {
+			if (this.groundMaterial.diffuseTexture) {
+				this.groundMaterial.diffuseTexture.dispose();
+			}
+			this.groundMaterial.dispose();
+			this.groundMaterial = null;
 		}
 	}
 
@@ -150,33 +259,8 @@ export class TunnelGenerator {
 			tangent = new Vector3(0, 0, 1);
 		}
 
-		// Sol du tunnel
-		const ground = CreateGround('ground', { width: 8, height: 10 }, this.scene);
-		ground.position.copyFrom(position);
-
-		// Orienter le sol selon la tangente du chemin
-		if (this.pathGenerator) {
-			// Calculer la rotation pour aligner le sol avec la tangente
-			const forward = new Vector3(0, 0, 1);
-			const angle = Math.atan2(tangent.x, tangent.z);
-			ground.rotation.y = angle;
-
-			// Inclinaison verticale si nécessaire
-			const horizontalLength = Math.sqrt(tangent.x * tangent.x + tangent.z * tangent.z);
-			if (horizontalLength > 0) {
-				ground.rotation.x = -Math.atan2(tangent.y, horizontalLength);
-			}
-		}
-
-		const groundMaterial = new StandardMaterial('groundMat', this.scene);
-		groundMaterial.diffuseColor = new Color3(0.2, 0.2, 0.8);
-		groundMaterial.emissiveColor = new Color3(0.1, 0.1, 0.3);
-		ground.material = groundMaterial;
-
-		segment.meshes.push(ground);
-
+		// Note: Le sol est maintenant une plateforme continue créée dans createContinuousGround()
 		// Note: Les rails sont maintenant des tubes continus créés dans createContinuousRails()
-		// On ne crée plus de segments de rails individuels
 
 		// Anneaux décoratifs périodiques
 		if (Math.floor(zPosition / 10) % 3 === 0) {
@@ -185,8 +269,12 @@ export class TunnelGenerator {
 
 			// Orienter l'anneau perpendiculairement au chemin
 			if (this.pathGenerator) {
-				ring.rotation.x = Math.PI / 2 + ground.rotation.x;
-				ring.rotation.y = ground.rotation.y;
+				const angle = Math.atan2(tangent.x, tangent.z);
+				const horizontalLength = Math.sqrt(tangent.x * tangent.x + tangent.z * tangent.z);
+				const tiltAngle = horizontalLength > 0 ? -Math.atan2(tangent.y, horizontalLength) : 0;
+
+				ring.rotation.x = Math.PI / 2 + tiltAngle;
+				ring.rotation.y = angle;
 			} else {
 				ring.rotation.x = Math.PI / 2;
 			}
@@ -221,19 +309,7 @@ export class TunnelGenerator {
 					const pathData = this.pathGenerator.getPositionAtDistance(newDistance);
 
 					segment.meshes.forEach(mesh => {
-						if (mesh.name.includes('ground')) {
-							mesh.position.copyFrom(pathData.position);
-
-							// Réorienter selon la tangente
-							const tangent = pathData.tangent;
-							const angle = Math.atan2(tangent.x, tangent.z);
-							mesh.rotation.y = angle;
-
-							const horizontalLength = Math.sqrt(tangent.x * tangent.x + tangent.z * tangent.z);
-							if (horizontalLength > 0) {
-								mesh.rotation.x = -Math.atan2(tangent.y, horizontalLength);
-							}
-						} else if (mesh.name.includes('ring')) {
+						if (mesh.name.includes('ring')) {
 							// Repositionner l'anneau
 							mesh.position.copyFrom(pathData.position);
 
@@ -269,6 +345,8 @@ export class TunnelGenerator {
 				}
 			});
 		}
+
+		// Note: Le sol continu n'a pas besoin d'être recyclé car il est assez long pour couvrir tout le parcours
 	}
 
 	/**
