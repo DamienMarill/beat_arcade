@@ -2,13 +2,15 @@ import { GameConfig } from '$lib/game/GameConfig.js';
 
 /**
  * Gère la navigation au clavier pour l'UI (borne d'arcade)
- * Les touches sont configurables via GameConfig.navigationBindings
+ * AUTOMATIQUE: Détecte et met à jour les éléments [data-nav-item] en temps réel
  */
 export class NavigationManager {
 	constructor() {
 		this.enabled = false;
 		this.focusableElements = [];
 		this.currentIndex = 0;
+		this.selector = '[data-nav-item]';
+		this.observer = null;
 		this.callbacks = {
 			onNavigate: null,
 			onValidate: null,
@@ -18,20 +20,26 @@ export class NavigationManager {
 
 		// Binding des événements
 		this.handleKeyDown = this.handleKeyDown.bind(this);
+		this.handleMutation = this.handleMutation.bind(this);
 	}
 
 	/**
-	 * Active la navigation et découvre les éléments focusables
+	 * Active la navigation AUTOMATIQUE avec détection temps réel du DOM
 	 */
 	enable(selector = '[data-nav-item]') {
 		if (this.enabled) return;
 
-		// Découvrir les éléments navigables
-		this.discoverElements(selector);
+		this.selector = selector;
 
-		// Activer les événements
+		// Découvrir les éléments initiaux
+		this.discoverElements();
+
+		// Activer les événements clavier
 		window.addEventListener('keydown', this.handleKeyDown);
 		this.enabled = true;
+
+		// Démarrer l'observation automatique du DOM
+		this.startObserving();
 
 		// Focus initial
 		if (this.focusableElements.length > 0) {
@@ -45,6 +53,9 @@ export class NavigationManager {
 	disable() {
 		if (!this.enabled) return;
 
+		// Arrêter l'observation du DOM
+		this.stopObserving();
+
 		window.removeEventListener('keydown', this.handleKeyDown);
 		this.enabled = false;
 
@@ -53,34 +64,90 @@ export class NavigationManager {
 	}
 
 	/**
-	 * Découvre les éléments navigables dans le DOM
+	 * Démarre l'observation automatique du DOM (MutationObserver)
 	 */
-	discoverElements(selector) {
-		const elements = document.querySelectorAll(selector);
-		this.focusableElements = Array.from(elements).filter(el => {
-			// Filtrer les éléments disabled ou invisibles
-			return !el.disabled && el.offsetParent !== null;
+	startObserving() {
+		if (this.observer) return;
+
+		this.observer = new MutationObserver(this.handleMutation);
+		this.observer.observe(document.body, {
+			childList: true,
+			subtree: true,
+			attributes: true,
+			attributeFilter: ['disabled', 'style', 'class', 'hidden']
 		});
 	}
 
 	/**
-	 * Redécouvre les éléments (utile si le DOM change)
+	 * Arrête l'observation du DOM
 	 */
-	refresh(selector = '[data-nav-item]') {
-		const previousElement = this.focusableElements[this.currentIndex];
-		this.discoverElements(selector);
+	stopObserving() {
+		if (this.observer) {
+			this.observer.disconnect();
+			this.observer = null;
+		}
+	}
 
-		// Essayer de maintenir le focus sur le même élément
-		if (previousElement) {
-			const newIndex = this.focusableElements.indexOf(previousElement);
-			if (newIndex !== -1) {
+	/**
+	 * Gère les mutations du DOM (ajout/retrait/modification d'éléments)
+	 */
+	handleMutation(mutations) {
+		// Redécouvrir les éléments si le DOM a changé
+		this.autoRefresh();
+	}
+
+	/**
+	 * Découvre automatiquement TOUS les éléments [data-nav-item] visibles
+	 */
+	discoverElements() {
+		const elements = document.querySelectorAll(this.selector);
+		this.focusableElements = Array.from(elements).filter(el => {
+			// Filtrer: disabled, invisibles, ou dans des conteneurs cachés
+			return !el.disabled &&
+			       el.offsetParent !== null &&
+			       !el.hasAttribute('hidden') &&
+			       window.getComputedStyle(el).display !== 'none' &&
+			       window.getComputedStyle(el).visibility !== 'hidden';
+		});
+	}
+
+	/**
+	 * Rafraîchissement automatique (appelé par MutationObserver)
+	 */
+	autoRefresh() {
+		const previousElement = this.focusableElements[this.currentIndex];
+		const previousCount = this.focusableElements.length;
+
+		this.discoverElements();
+
+		// Si le nombre d'éléments a changé ou si l'élément précédent n'existe plus
+		if (this.focusableElements.length !== previousCount ||
+		    !this.focusableElements.includes(previousElement)) {
+
+			// Essayer de maintenir le focus sur le même élément
+			if (previousElement && this.focusableElements.includes(previousElement)) {
+				const newIndex = this.focusableElements.indexOf(previousElement);
 				this.currentIndex = newIndex;
 			} else {
+				// Réinitialiser au premier élément
 				this.currentIndex = 0;
 			}
-		}
 
-		this.setFocus(this.currentIndex);
+			// Appliquer le focus
+			if (this.focusableElements.length > 0) {
+				this.setFocus(this.currentIndex);
+			} else {
+				this.clearFocus();
+			}
+		}
+	}
+
+	/**
+	 * Rafraîchissement manuel (legacy, utilisé par les anciens composants)
+	 */
+	refresh(selector = null) {
+		if (selector) this.selector = selector;
+		this.autoRefresh();
 	}
 
 	/**

@@ -41,7 +41,8 @@
       "mcp__playwright__browser_press_key",
       "mcp__playwright__browser_evaluate",
       "mcp__serena__replace_regex",
-      "mcp__serena__find_symbol"
+      "mcp__serena__find_symbol",
+      "Bash(npm run check:*)"
     ],
     "deny": [],
     "ask": []

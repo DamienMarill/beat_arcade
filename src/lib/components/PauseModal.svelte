@@ -5,7 +5,6 @@
 	export let onResume;
 	export let onQuit;
 	export let songName = '';
-	export let navManager = null;
 
 	// Générer le texte d'aide basé sur les bindings
 	$: navigationHelp = (() => {
@@ -26,19 +25,10 @@
 	$: if (dialogElement) {
 		if (visible) {
 			dialogElement.showModal();
-			// Attendre que le DOM soit mis à jour puis réactiver la navigation
-			setTimeout(() => {
-				if (navManager) {
-					// Utiliser un sélecteur spécifique au modal de pause uniquement
-					navManager.enable('#pause-modal [data-nav-item]');
-				}
-			}, 150);
+			// Le MutationObserver du navManager détectera automatiquement les data-nav-item
 		} else {
 			dialogElement.close();
-			// Désactiver la navigation quand le modal se ferme
-			if (navManager) {
-				navManager.disable();
-			}
+			// Le MutationObserver mettra à jour automatiquement la liste des éléments
 		}
 	}
 </script>

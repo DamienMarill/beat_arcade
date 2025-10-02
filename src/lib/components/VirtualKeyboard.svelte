@@ -263,6 +263,12 @@
 </dialog>
 
 <style>
+	/* Rendre le backdrop du dialog non-bloquant pour les éléments en dessous */
+	dialog::backdrop {
+		background: rgba(0, 0, 0, 0.5);
+		pointer-events: none;
+	}
+
 	@keyframes slide-up {
 		from {
 			transform: translateY(100%);

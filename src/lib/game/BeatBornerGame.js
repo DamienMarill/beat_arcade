@@ -37,7 +37,9 @@ export class BeatBornerGame {
 		this.currentMap = null;
 		this.gameplayData = null;
 		this.isPlaying = false;
+		this.isPaused = false;
 		this.startTime = 0;
+		this.musicEndTime = 0; // Pour gérer le délai de 3s après la fin
 
 		this.init();
 	}
@@ -57,7 +59,12 @@ export class BeatBornerGame {
 		this.cameraController = new CameraController(scene);
 		this.lightingManager = new LightingManager(scene);
 		this.tunnelGenerator = new TunnelGenerator(scene, this.cameraController);
-		this.audioManager = new AudioManager();
+		this.audioManager = new AudioManager({
+			onMusicEnded: () => {
+				// Marquer le temps de fin pour gérer le délai de 3s
+				this.musicEndTime = performance.now();
+			}
+		});
 		
 		// Créer le ScoreManager avec callbacks pour l'UI
 		this.scoreManager = new ScoreManager({
@@ -156,6 +163,14 @@ export class BeatBornerGame {
 			// Mettre à jour les notes (synchronisées avec l'audio)
 			if (this.gameplayData) {
 				this.notesManager.update();
+			}
+
+			// Vérifier si 3s se sont écoulées après la fin de la musique
+			if (this.musicEndTime > 0) {
+				const elapsedSinceEnd = (performance.now() - this.musicEndTime) / 1000;
+				if (elapsedSinceEnd >= 3.0) {
+					this.endGame();
+				}
 			}
 		}
 	}
@@ -427,6 +442,23 @@ export class BeatBornerGame {
 	 */
 	getAudioOffset() {
 		return this.audioManager.getAudioOffset() * 1000;
+	}
+
+	/**
+	 * Termine le jeu et affiche les résultats
+	 */
+	endGame() {
+		this.isPlaying = false;
+		this.cameraController.stop();
+		this.inputManager.disable();
+
+		// Récupérer les stats finales
+		const finalStats = this.scoreManager.getStats();
+
+		// Callback pour afficher le modal de résultats
+		if (this.callbacks.onGameEnd) {
+			this.callbacks.onGameEnd(finalStats);
+		}
 	}
 
 	/**

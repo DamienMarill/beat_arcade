@@ -8,6 +8,7 @@
 	import MapSelector from '$lib/components/MapSelector.svelte';
 	import GlobalKeyboard from '$lib/components/GlobalKeyboard.svelte';
 	import GradeDisplay from '$lib/components/GradeDisplay.svelte';
+	import ResultsModal from '$lib/components/ResultsModal.svelte';
 	import { BeatBornerGame } from '$lib/game/BeatBornerGame.js';
 	import { GameConfig } from '$lib/game/GameConfig.js';
 
@@ -25,6 +26,8 @@
 	let showPlayButton = false;
 	let showGameUI = false;
 	let showPauseModal = false;
+	let showResultsModal = false;
+	let resultsStats = null;
 	let mapInfo = null;
 	let songName = 'Loading...';
 	let gameTime = '00:00';
@@ -71,7 +74,7 @@
 	function navigateToMapSelection() {
 		// Aller sur l'écran de jeu (tunnel 3D) puis afficher la modal
 		currentScreen = 'game';
-		navManager.disable();
+		// Le navManager reste activé - il détectera automatiquement les data-nav-item du modal
 
 		// Initialiser le jeu d'abord (tunnel 3D)
 		setTimeout(() => {
@@ -148,11 +151,7 @@
 
 		// Retour au menu
 		currentScreen = 'menu';
-
-		// Redécouvrir les éléments du menu et réactiver la navigation
-		setTimeout(() => {
-			navManager.refresh('[data-nav-item]');
-		}, 100);
+		// Le navManager détectera automatiquement les data-nav-item du menu via MutationObserver
 	}
 
 	async function initGameAndStart() {
@@ -185,8 +184,7 @@
 			onGameStart: () => {
 				showPlayButton = false;
 				showGameUI = true;
-				// DÉSACTIVER complètement la navigation pendant le jeu
-				navManager.disable();
+				// Le navManager reste activé - il n'y a juste pas de data-nav-item pendant le gameplay
 				startGameTimeUpdate();
 			},
 			onGamePause: () => {
@@ -217,6 +215,12 @@
 				// Réinitialiser le combo à 0
 				combo = 0;
 				multiplier = 1.0;
+			},
+			onGameEnd: (finalStats) => {
+				// Afficher le modal de résultats
+				resultsStats = finalStats;
+				showResultsModal = true;
+				showGameUI = false;
 			}
 		}, mapId);
 
@@ -250,6 +254,27 @@
 	}
 
 	function handleQuitFromPause() {
+		navigateToMenu();
+	}
+
+	function handleReplayFromResults() {
+		showResultsModal = false;
+		resultsStats = null;
+		
+		// Réinitialiser et relancer le jeu
+		if (game) {
+			game.dispose();
+			game = null;
+		}
+		
+		setTimeout(() => {
+			initGameAndStart();
+		}, 100);
+	}
+
+	function handleBackToMenuFromResults() {
+		showResultsModal = false;
+		resultsStats = null;
 		navigateToMenu();
 	}
 
@@ -387,7 +412,14 @@
 		<LoadingScreen visible={showLoading} {mapInfo} />
 		<PlayButton visible={showPlayButton} onPlay={handlePlay} />
 		<GameUI visible={showGameUI} {songName} {gameTime} {notesCount} {score} {combo} {multiplier} />
-		<PauseModal visible={showPauseModal} onResume={handleResume} onQuit={handleQuitFromPause} {songName} {navManager} />
+		<PauseModal visible={showPauseModal} onResume={handleResume} onQuit={handleQuitFromPause} {songName} />
+		<ResultsModal
+			visible={showResultsModal}
+			stats={resultsStats}
+			{songName}
+			onReplay={handleReplayFromResults}
+			onBackToMenu={handleBackToMenuFromResults}
+		/>
 		
 		<!-- Affichage du grade (PARFAIT/SUPER/BIEN) près de la case -->
 		<GradeDisplay bind:this={gradeDisplayComponent} />

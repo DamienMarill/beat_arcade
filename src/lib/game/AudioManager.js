@@ -4,7 +4,8 @@ import { GameConfig } from './GameConfig.js';
  * Gère l'audio du jeu
  */
 export class AudioManager {
-	constructor() {
+	constructor(callbacks = {}) {
+		this.callbacks = callbacks;
 		this.gameAudio = null;
 		this.isPlaying = false;
 		this.audioOffset = GameConfig.defaultAudioOffset;
@@ -81,8 +82,16 @@ export class AudioManager {
 			});
 
 			this.gameAudio.addEventListener('suspend', () => {
-				console.warn('💤 Audio suspendu par le navigateur');
-			});
+			console.warn('💤 Audio suspendu par le navigateur');
+		});
+
+		// Détecter la fin de la musique
+		this.gameAudio.addEventListener('ended', () => {
+			console.log('🎵 Musique terminée');
+			if (this.callbacks.onMusicEnded) {
+				this.callbacks.onMusicEnded();
+			}
+		});
 
 			// Attendre le chargement COMPLET de l'audio
 			await new Promise((resolve, reject) => {
