@@ -46,22 +46,6 @@ export class TunnelGenerator {
 
 		segment.meshes.push(ground);
 
-		// Murs du tunnel
-		const leftWall = MeshBuilder.CreateBox('leftWall', { width: 0.2, height: 6, depth: 10 }, this.scene);
-		leftWall.position.set(-4, 3, zPosition);
-
-		const rightWall = MeshBuilder.CreateBox('rightWall', { width: 0.2, height: 6, depth: 10 }, this.scene);
-		rightWall.position.set(4, 3, zPosition);
-
-		const wallMaterial = new StandardMaterial('wallMat', this.scene);
-		wallMaterial.diffuseColor = new Color3(0.1, 0.1, 0.1);
-		wallMaterial.emissiveColor = new Color3(0, 0.5, 1);
-
-		leftWall.material = wallMaterial;
-		rightWall.material = wallMaterial;
-
-		segment.meshes.push(leftWall, rightWall);
-
 		// Rails lumineux au sol
 		const leftRail = MeshBuilder.CreateBox('leftRail', { width: 0.1, height: 0.1, depth: 10 }, this.scene);
 		leftRail.position.set(-1.5, 0.05, zPosition);
