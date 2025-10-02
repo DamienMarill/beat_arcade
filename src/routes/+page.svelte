@@ -7,6 +7,7 @@
 	import PauseModal from '$lib/components/PauseModal.svelte';
 	import MapSelector from '$lib/components/MapSelector.svelte';
 	import GlobalKeyboard from '$lib/components/GlobalKeyboard.svelte';
+	import GradeDisplay from '$lib/components/GradeDisplay.svelte';
 	import { BeatBornerGame } from '$lib/game/BeatBornerGame.js';
 	import { GameConfig } from '$lib/game/GameConfig.js';
 
@@ -29,6 +30,14 @@
 	let gameTime = '00:00';
 	let notesCount = 0;
 	let gameTimeInterval;
+	
+	// Grade display
+	let gradeDisplayComponent;
+	
+	// Score tracking
+	let score = 0;
+	let combo = 0;
+	let multiplier = 1.0;
 
 	onMount(() => {
 		// Créer le manager de navigation
@@ -131,6 +140,11 @@
 		showPlayButton = false;
 		showGameUI = false;
 		showPauseModal = false;
+		
+		// Réinitialiser le score
+		score = 0;
+		combo = 0;
+		multiplier = 1.0;
 
 		// Retour au menu
 		currentScreen = 'menu';
@@ -180,6 +194,29 @@
 			},
 			onGameResume: () => {
 				showPauseModal = false;
+			},
+			onNoteHit: (grade, timeOffset, gridX, gridY) => {
+				// Afficher le grade visuel près de la case
+				displayGrade(grade, gridX, gridY);
+			},
+			onNoteMiss: (note, gridX, gridY) => {
+				// Afficher "MANQUÉ" près de la case
+				displayGrade('miss', gridX, gridY);
+			},
+			onScoreUpdate: (data) => {
+				// Mettre à jour le score, combo et multiplicateur
+				score = data.score;
+				combo = data.combo;
+				multiplier = data.multiplier;
+			},
+			onComboUpdate: (comboValue, multiplierValue) => {
+				combo = comboValue;
+				multiplier = multiplierValue;
+			},
+			onComboBreak: (previousCombo) => {
+				// Réinitialiser le combo à 0
+				combo = 0;
+				multiplier = 1.0;
 			}
 		}, mapId);
 
@@ -215,6 +252,73 @@
 	function handleQuitFromPause() {
 		navigateToMenu();
 	}
+
+	function displayGrade(grade, gridX, gridY) {
+		if (!gradeDisplayComponent || !game) return;
+		
+		// Convertir les coordonnées de grille en coordonnées écran
+		const screenPos = convertGridToScreen(gridX, gridY);
+		if (screenPos) {
+			gradeDisplayComponent.showGrade(grade, screenPos.x, screenPos.y);
+		}
+	}
+	
+	function convertGridToScreen(gridX, gridY) {
+	if (!game || !canvas) return null;
+	
+	const scene = game.sceneManager?.getScene();
+	const camera = game.cameraController?.getCamera();
+	if (!scene || !camera) return null;
+	
+	// Accéder à BABYLON via le scene (pas de variable globale en Svelte)
+	const engine = scene.getEngine();
+	const BABYLON = scene.getEngine().constructor.prototype.constructor;
+	
+	// Récupérer les positions monde de la grille
+	const gridPositions = GameConfig.grid.positions;
+	const cameraZ = game.cameraController.getPositionZ();
+	const hitBarZ = cameraZ + GameConfig.hitDistance;
+	
+	// Position 3D de la case de grille
+	const worldPos = {
+		x: gridPositions.x[gridX],
+		y: gridPositions.y[gridY],
+		z: hitBarZ
+	};
+	
+	// Convertir en coordonnées écran via les méthodes du scene
+	const viewport = camera.viewport.toGlobal(
+		engine.getRenderWidth(),
+		engine.getRenderHeight()
+	);
+	
+	// Utiliser la projection matricielle directement
+	const transformMatrix = scene.getTransformMatrix();
+	const worldMatrix = scene.getEngine().getIdentityMatrix ? scene.getEngine().getIdentityMatrix() : null;
+	
+	// Projection manuelle si BABYLON n'est pas accessible
+	const viewProjection = transformMatrix;
+	
+	// Créer un vecteur 4D pour la projection homogène
+	const x = worldPos.x;
+	const y = worldPos.y;
+	const z = worldPos.z;
+	
+	// Transformation manuelle (projection perspective)
+	const m = viewProjection.m;
+	const w = x * m[3] + y * m[7] + z * m[11] + m[15];
+	
+	if (Math.abs(w) < 0.0001) return null;
+	
+	const screenX = (x * m[0] + y * m[4] + z * m[8] + m[12]) / w;
+	const screenY = (x * m[1] + y * m[5] + z * m[9] + m[13]) / w;
+	
+	// Convertir de NDC [-1,1] vers pixels écran
+	const finalX = viewport.x + (1 + screenX) * viewport.width * 0.5;
+	const finalY = viewport.y + (1 - screenY) * viewport.height * 0.5;
+	
+	return { x: finalX, y: finalY };
+}
 
 	function handleGamePauseKey(event) {
 		const key = event.key.toLowerCase();
@@ -282,8 +386,11 @@
 
 		<LoadingScreen visible={showLoading} {mapInfo} />
 		<PlayButton visible={showPlayButton} onPlay={handlePlay} />
-		<GameUI visible={showGameUI} {songName} {gameTime} {notesCount} />
+		<GameUI visible={showGameUI} {songName} {gameTime} {notesCount} {score} {combo} {multiplier} />
 		<PauseModal visible={showPauseModal} onResume={handleResume} onQuit={handleQuitFromPause} {songName} {navManager} />
+		
+		<!-- Affichage du grade (PARFAIT/SUPER/BIEN) près de la case -->
+		<GradeDisplay bind:this={gradeDisplayComponent} />
 	</div>
 {/if}
 

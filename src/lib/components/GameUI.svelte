@@ -3,6 +3,9 @@
 	export let songName = 'Loading...';
 	export let gameTime = '00:00';
 	export let notesCount = 0;
+	export let score = 0;
+	export let combo = 0;
+	export let multiplier = 1.0;
 </script>
 
 {#if visible}
@@ -32,6 +35,25 @@
 						<div class="stat-title text-xs">Notes</div>
 						<div class="stat-value text-lg">
 							{notesCount}
+						</div>
+					</div>
+
+					<div class="stat px-2 py-1">
+						<div class="stat-figure text-warning">⭐</div>
+						<div class="stat-title text-xs">Score</div>
+						<div class="stat-value text-xl font-bold text-warning">
+							{score.toLocaleString()}
+						</div>
+					</div>
+
+					<div class="stat px-2 py-1">
+						<div class="stat-figure text-success">🔥</div>
+						<div class="stat-title text-xs">Combo</div>
+						<div class="stat-value text-lg">
+							{combo}
+							{#if multiplier > 1.0}
+								<span class="text-sm text-accent font-normal">x{multiplier.toFixed(1)}</span>
+							{/if}
 						</div>
 					</div>
 				</div>

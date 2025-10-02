@@ -36,6 +36,47 @@ export const GameConfig = {
 	 */
 	despawnTime: 0.05,
 
+	/**
+	 * Fenêtres de timing pour le scoring (secondes)
+	 * Système à 3 niveaux inspiré de DDR/osu!/Guitar Hero
+	 * perfect < great < good (dans hitWindow)
+	 */
+	timingWindows: {
+		perfect: 0.050,  // ±50ms - Timing parfait (doré, effet maximal)
+		great: 0.100,    // ±100ms - Bon timing (cyan, effet moyen)
+		good: 0.150      // ±150ms - Acceptable (vert, effet minimal)
+	},
+
+	/**
+	 * Points attribués par grade de hit
+	 */
+	scorePoints: {
+		perfect: 100,  // PARFAIT: timing exceptionnel
+		great: 70,     // SUPER: bon timing
+		good: 40,      // BIEN: timing acceptable
+		miss: 0        // Manqué: aucun point
+	},
+
+	/**
+	 * Couleurs des grades (format RGB pour Babylon.js)
+	 */
+	gradeColors: {
+		perfect: { r: 1.0, g: 0.84, b: 0.0 },   // Or (gold)
+		great: { r: 0.0, g: 0.9, b: 1.0 },      // Cyan
+		good: { r: 0.2, g: 1.0, b: 0.2 },       // Vert clair
+		miss: { r: 0.8, g: 0.2, b: 0.2 }        // Rouge
+	},
+
+	/**
+	 * Configuration des effets de particules par grade
+	 */
+	particlesByGrade: {
+		perfect: { count: 50, intensity: 1.5 },   // Maximum d'effet
+		great: { count: 30, intensity: 1.0 },     // Effet moyen
+		good: { count: 15, intensity: 0.7 },      // Effet minimal
+		miss: { count: 5, intensity: 0.3 }        // Effet très faible
+	},
+
 	// ═══════════════════════════════════════════════════
 	// CAMÉRA & VITESSE
 	// ═══════════════════════════════════════════════════

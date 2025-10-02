@@ -6,6 +6,7 @@ import { AudioManager } from './AudioManager.js';
 import { LightingManager } from './LightingManager.js';
 import { InputManager } from './InputManager.js';
 import GridHelper from './GridHelper.js';
+import { ScoreManager } from './ScoreManager.js';
 import { GameConfig } from './GameConfig.js';
 import { beatSaverService } from '../../services/BeatSaverService.js';
 import { beatMapParser } from '../../services/BeatMapParser.js';
@@ -30,6 +31,7 @@ export class BeatBornerGame {
 		this.lightingManager = null;
 		this.inputManager = null;
 		this.gridHelper = null;
+		this.scoreManager = null;
 
 		// État du jeu
 		this.currentMap = null;
@@ -56,7 +58,48 @@ export class BeatBornerGame {
 		this.lightingManager = new LightingManager(scene);
 		this.tunnelGenerator = new TunnelGenerator(scene, this.cameraController);
 		this.audioManager = new AudioManager();
-		this.notesManager = new NotesManager(scene, this.cameraController, this.audioManager);
+		
+		// Créer le ScoreManager avec callbacks pour l'UI
+		this.scoreManager = new ScoreManager({
+			onScoreUpdate: (data) => {
+				if (this.callbacks.onScoreUpdate) {
+					this.callbacks.onScoreUpdate(data);
+				}
+			},
+			onComboUpdate: (combo, multiplier) => {
+				if (this.callbacks.onComboUpdate) {
+					this.callbacks.onComboUpdate(combo, multiplier);
+				}
+			},
+			onComboBreak: (previousCombo) => {
+				if (this.callbacks.onComboBreak) {
+					this.callbacks.onComboBreak(previousCombo);
+				}
+			}
+		});
+		
+		// Créer le NotesManager avec callback pour le scoring
+		this.notesManager = new NotesManager(scene, this.cameraController, this.audioManager, {
+			onNoteHit: (grade, timeOffset, gridX, gridY) => {
+				// Enregistrer le hit dans le ScoreManager
+				this.scoreManager.registerHit(grade);
+				
+				// Callback vers l'UI si nécessaire
+				if (this.callbacks.onNoteHit) {
+					this.callbacks.onNoteHit(grade, timeOffset, gridX, gridY);
+				}
+			},
+			onNoteMiss: (note, gridX, gridY) => {
+				// Enregistrer le miss dans le ScoreManager
+				this.scoreManager.registerMiss();
+				
+				// Callback vers l'UI si nécessaire
+				if (this.callbacks.onNoteMiss) {
+					this.callbacks.onNoteMiss(note, gridX, gridY);
+				}
+			}
+		});
+		
 		this.inputManager = new InputManager();
 
 		// Initialiser le helper de grille
@@ -86,13 +129,7 @@ export class BeatBornerGame {
 
 			// Tenter de frapper une note
 			const hit = this.notesManager.tryHitNote(x, y);
-
-			if (hit) {
-				// Callback optionnel pour l'UI
-				if (this.callbacks.onNoteHit) {
-					this.callbacks.onNoteHit({ x, y, key });
-				}
-			}
+			// Le callback onNoteHit est maintenant géré dans NotesManager avec le grade
 		});
 	}
 

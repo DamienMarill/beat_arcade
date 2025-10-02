@@ -9,10 +9,11 @@ import { GameConfig, DerivedConfig } from './GameConfig.js';
  * Synchronisation basée sur le temps audio réel
  */
 export class NotesManager {
-	constructor(scene, cameraController, audioManager) {
+	constructor(scene, cameraController, audioManager, callbacks = {}) {
 		this.scene = scene;
 		this.cameraController = cameraController;
 		this.audioManager = audioManager;
+		this.callbacks = callbacks;
 		this.notes = [];
 		this.gameplayData = null;
 
@@ -132,11 +133,24 @@ export class NotesManager {
 			// Vérifier la position
 			if (data.x !== gridX || data.y !== gridY) continue;
 
-			// Vérifier la fenêtre temporelle
+			// Vérifier la fenêtre temporelle et calculer le grade
 			const timeUntilHit = data.time - currentAudioTime;
-			if (Math.abs(timeUntilHit) <= this.hitWindow) {
-				// HIT RÉUSSI !
-				this.hitNote(noteObj, timeUntilHit, gridX, gridY);
+			const absTimeOffset = Math.abs(timeUntilHit);
+			
+			// Vérifier si dans la fenêtre de hit (good window = max)
+			if (absTimeOffset <= this.hitWindow) {
+				// Déterminer le grade selon la précision
+				const timingWindows = GameConfig.timingWindows;
+				let grade = 'good';
+				
+				if (absTimeOffset <= timingWindows.perfect) {
+					grade = 'perfect';
+				} else if (absTimeOffset <= timingWindows.great) {
+					grade = 'great';
+				}
+				
+				// HIT RÉUSSI avec grade !
+				this.hitNote(noteObj, timeUntilHit, gridX, gridY, grade);
 				return true;
 			}
 		}
@@ -148,7 +162,7 @@ export class NotesManager {
 	 * Marque une note comme frappée et applique les effets visuels
 	 * @private
 	 */
-	hitNote(noteObj, timeOffset, gridX, gridY) {
+	hitNote(noteObj, timeOffset, gridX, gridY, grade = 'good') {
 		noteObj.hit = true;
 		noteObj.isVisible = false;
 
@@ -166,27 +180,36 @@ export class NotesManager {
 			hitBarZ                  // Position Z de la grille (caméra + 5)
 		);
 
-		// Créer un système de particules à la position de la grille
-		this.createHitParticles(particlePosition, data.type);
+		// Créer un système de particules avec le grade
+		this.createHitParticles(particlePosition, data.type, grade);
 
 		// Jouer le son de hit
 		this.audioManager.playHitSound();
 
 		// Désactiver immédiatement la note
 		mesh.setEnabled(false);
+		
+		// Callback avec le grade et la position pour le scoring et l'UI
+		if (this.callbacks.onNoteHit) {
+			this.callbacks.onNoteHit(grade, timeOffset, gridX, gridY);
+		}
 	}
 
 	/**
 	 * Crée un système de particules pour l'effet de frappe
 	 * @private
 	 */
-	createHitParticles(position, noteType) {
-		// Couleur selon le type de note
+	createHitParticles(position, noteType, grade = 'good') {
+		// Couleur selon le type de note (rouge/bleu de base)
 		const colors = GameConfig.colors;
 		const noteColor = noteType === 0 ? colors.red : colors.blue;
+		
+		// Couleur selon le grade (or/cyan/vert)
+		const gradeColor = GameConfig.gradeColors[grade];
+		const particleConfig = GameConfig.particlesByGrade[grade];
 
 		// Créer un vrai ParticleSystem Babylon.js
-		const particleSystem = new ParticleSystem(`hit_${Date.now()}`, 100, this.scene);
+		const particleSystem = new ParticleSystem(`hit_${Date.now()}`, particleConfig.count, this.scene);
 
 		// Texture simple (un rond blanc)
 		particleSystem.particleTexture = new Texture("https://www.babylonjs-playground.com/textures/flare.png", this.scene);
@@ -196,21 +219,30 @@ export class NotesManager {
 		particleSystem.minEmitBox = new Vector3(0, 0, 0);
 		particleSystem.maxEmitBox = new Vector3(0, 0, 0);
 
-		// Couleurs
-		particleSystem.color1 = new Color4(...noteColor.diffuse, 1);
-		particleSystem.color2 = new Color4(...noteColor.emissive, 1);
+		// Couleurs basées sur le grade (or/cyan/vert) avec légère teinte de la note
+		const color1 = new Color4(
+			gradeColor.r * 0.8 + noteColor.diffuse[0] * 0.2,
+			gradeColor.g * 0.8 + noteColor.diffuse[1] * 0.2,
+			gradeColor.b * 0.8 + noteColor.diffuse[2] * 0.2,
+			1
+		);
+		const color2 = new Color4(gradeColor.r, gradeColor.g, gradeColor.b, 1);
+		
+		particleSystem.color1 = color1;
+		particleSystem.color2 = color2;
 		particleSystem.colorDead = new Color4(0, 0, 0, 0);
 
-		// Taille des particules
-		particleSystem.minSize = 0.2;
-		particleSystem.maxSize = 0.4;
+		// Taille des particules selon l'intensité du grade
+		const sizeMultiplier = particleConfig.intensity;
+		particleSystem.minSize = 0.2 * sizeMultiplier;
+		particleSystem.maxSize = 0.4 * sizeMultiplier;
 
 		// Durée de vie
 		particleSystem.minLifeTime = 0.3;
 		particleSystem.maxLifeTime = 0.6;
 
-		// Taux d'émission
-		particleSystem.emitRate = 200;
+		// Taux d'émission adapté au nombre de particules
+		particleSystem.emitRate = particleConfig.count * 4;
 
 		// Blend mode pour effet brillant
 		particleSystem.blendMode = ParticleSystem.BLENDMODE_ADD;
@@ -219,9 +251,9 @@ export class NotesManager {
 		particleSystem.direction1 = new Vector3(-1, 1, -1);
 		particleSystem.direction2 = new Vector3(1, 3, 1);
 
-		// Vitesse
-		particleSystem.minEmitPower = 1.5;
-		particleSystem.maxEmitPower = 2.5;
+		// Vitesse selon l'intensité
+		particleSystem.minEmitPower = 1.5 * particleConfig.intensity;
+		particleSystem.maxEmitPower = 2.5 * particleConfig.intensity;
 		particleSystem.updateSpeed = 0.016;
 
 		// Gravité
@@ -267,8 +299,9 @@ export class NotesManager {
 		}
 
 		// Mise à jour des notes actives uniquement
-		// Fenêtre temporelle: [currentTime - despawnTime, currentTime + lookaheadTime]
-		const minTime = currentAudioTime - this.despawnTime;
+		// Fenêtre temporelle : garder les notes assez longtemps pour détecter les miss
+		// hitWindow * 3 = assez de temps pour que la note passe le panneau de détection
+		const minTime = currentAudioTime - (this.hitWindow * 3);
 		const maxTime = currentAudioTime + this.lookaheadTime;
 
 		for (let i = 0; i < this.nextNoteIndex; i++) {
@@ -315,11 +348,23 @@ export class NotesManager {
 				}
 			}
 
-			// Note manquée
-			if (timeUntilHit < -this.despawnTime) {
+			// Note manquée : détection par position (panneau invisible)
+			// Distance parcourue pendant hitWindow = zone où la note aurait dû être frappée
+			const missDetectionDistance = this.hitWindow * this.cameraSpeedPerSecond;
+			const missDetectionZ = hitBarZ - missDetectionDistance;
+			
+			
+			
+			// Si la note a dépassé le panneau de détection sans être hit, elle est manquée
+			if (mesh.position.z < missDetectionZ) {
 				mesh.setEnabled(false);
 				noteObj.missed = true;
 				noteObj.isVisible = false;
+				
+				// Callback pour le scoring avec position
+				if (this.callbacks.onNoteMiss) {
+					this.callbacks.onNoteMiss(noteObj.data, noteObj.data.x, noteObj.data.y);
+				}
 			}
 		}
 	}
