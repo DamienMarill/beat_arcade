@@ -12,6 +12,32 @@
 	$: bpm = metadata.bpm || 0;
 	$: duration = metadata.duration || 0;
 	$: stats = map?.stats || {};
+	$: difficulties = map?.difficulties || [];
+
+	// Debug temporaire - à supprimer après test
+	$: if (map) {
+		console.log('MapCard - map data:', map);
+		console.log('MapCard - difficulties:', difficulties);
+		console.log('MapCard - difficulties length:', difficulties.length);
+	}
+
+	// Obtenir les difficultés disponibles et leurs couleurs
+	function getDifficultyColor(difficulty) {
+		const colors = {
+			'Easy': 'badge-success',
+			'Normal': 'badge-info',
+			'Hard': 'badge-warning',
+			'Expert': 'badge-error',
+			'ExpertPlus': 'badge-secondary'
+		};
+		return colors[difficulty] || 'badge-neutral';
+	}
+
+	// Formater le nom de difficulté pour affichage
+	function formatDifficulty(difficulty) {
+		if (difficulty === 'ExpertPlus') return 'Expert+';
+		return difficulty;
+	}
 
 	// Formater la durée (secondes → mm:ss)
 	function formatDuration(seconds) {
@@ -30,7 +56,7 @@
 
 <div
 	data-nav-item
-	class="card card-side bg-base-200 border-2 border-base-300 hover:border-primary transition-all duration-300 cursor-pointer group h-32"
+	class="card card-side bg-base-200 border border-base-300 transition-all duration-300 overflow-hidden cursor-pointer group"
 	on:click={() => onSelect(map)}
 	role="button"
 	tabindex="0"
@@ -42,7 +68,7 @@
 			<img
 				src={coverUrl}
 				alt={songName}
-				class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+				class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
 			/>
 		{:else}
 			<div class="w-full h-full bg-gradient-beat flex items-center justify-center">
@@ -57,12 +83,12 @@
 			{songName}
 		</h3>
 
-		<div class="flex flex-col gap-1 text-xs opacity-80 flex-1">
-			<p class="flex items-center gap-2 truncate">
+		<div class="flex gap-4 text-xs opacity-80 flex-1">
+			<p class="flex items-center gap-1 truncate">
 				<span class="text-accent">🎤</span>
 				<span class="truncate">{artistName}</span>
 			</p>
-			<p class="flex items-center gap-2 truncate">
+			<p class="flex items-center gap-1 truncate">
 				<span class="text-secondary">🗺️</span>
 				<span class="truncate">{mapper}</span>
 			</p>
@@ -79,6 +105,15 @@
 					<span class="opacity-70">👎 {formatNumber(stats.downvotes || 0)}</span>
 				</div>
 			{/if}
+		</div>
+
+		<!-- Affichage des niveaux de difficulté -->
+		<div class="flex items-center justify-start flex-wrap gap-2">
+			{#each difficulties as diff}
+				<div class="badge badge-xs {getDifficultyColor(diff.difficulty)}">
+					{formatDifficulty(diff.difficulty)}
+				</div>
+			{/each}
 		</div>
 	</div>
 </div>

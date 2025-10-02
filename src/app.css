@@ -135,9 +135,8 @@ body {
 
 [data-nav-item].nav-focused,
 [data-nav-item][data-nav-focused="true"] {
-  transform: scale(1.1);
   box-shadow: 0 0 20px hsl(var(--a) / 0.8), 0 0 40px hsl(var(--a) / 0.5), 0 0 60px hsl(var(--a) / 0.3);
-  border: 3px solid hsl(var(--a));
+  border: 1px solid hsl(var(--a));
   z-index: 10;
 }
 

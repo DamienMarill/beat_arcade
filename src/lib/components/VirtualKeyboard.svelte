@@ -243,7 +243,7 @@
 					{#each row as key, colIndex}
 						<button
 							class="kbd kbd-lg {keyWidths[key] || 'col-span-1'} 
-								{rowIndex === currentRow && colIndex === currentCol ? 'ring-4 ring-accent scale-110' : ''}
+								{rowIndex === currentRow && colIndex === currentCol ? 'ring-2 ring-accent scale-110' : ''}
 								{key === '⇧' && (shiftActive || capsLockActive) ? 'bg-accent text-accent-content' : ''}
 								transition-all duration-200 hover:scale-105 flex items-center justify-center text-lg font-bold"
 							on:click={() => handleKeyPress(key)}

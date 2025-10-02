@@ -296,9 +296,6 @@
 				<div class="mb-6 max-w-2xl mx-auto">
 					<div
 						class="transition-all duration-200"
-						class:ring-4={searchInputFocused}
-						class:ring-primary={searchInputFocused}
-						class:scale-105={searchInputFocused}
 					>
 						<InputWithKeyboard
 							bind:this={searchInputComponent}
@@ -343,9 +340,6 @@
 						<div
 							data-map-card
 							class="transition-all duration-200"
-							class:ring-4={index === selectedMapIndex}
-							class:ring-primary={index === selectedMapIndex}
-							class:scale-105={index === selectedMapIndex}
 						>
 							<MapCard
 								{map}
