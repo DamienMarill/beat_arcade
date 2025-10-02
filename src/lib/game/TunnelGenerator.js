@@ -59,7 +59,7 @@ export class TunnelGenerator {
 			}
 
 			// Vecteur perpendiculaire (droite)
-			const right = new Vector3(-tangent.z, 0, tangent.x).normalize();
+			const right = new Vector3(tangent.z, 0, -tangent.x).normalize();
 
 			// Positions des rails (1.5 unités de chaque côté)
 			const leftPoint = point.add(right.scale(-1.5));

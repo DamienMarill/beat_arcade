@@ -60,7 +60,7 @@ export class GridHelper {
 
             // Calculer les vecteurs locaux du chemin
             const forward = pathData.tangent;
-            const right = new Vector3(-forward.z, 0, forward.x).normalize();
+            const right = new Vector3(forward.z, 0, -forward.x).normalize();
             const up = new Vector3(0, 1, 0);
 
             // Position de base sur le chemin
@@ -102,7 +102,7 @@ export class GridHelper {
 
             // Calculer les vecteurs locaux
             const forward = pathData.tangent;
-            const right = new Vector3(-forward.z, 0, forward.x).normalize();
+            const right = new Vector3(forward.z, 0, -forward.x).normalize();
             const up = new Vector3(0, 1, 0);
 
             // Position mondiale
