@@ -8,6 +8,7 @@ import { InputManager } from './InputManager.js';
 import GridHelper from './GridHelper.js';
 import { ScoreManager } from './ScoreManager.js';
 import { PathGenerator } from './PathGenerator.js';
+import { SpaceshipManager } from './SpaceshipManager.js';
 import { GameConfig } from './GameConfig.js';
 import { beatSaverService } from '../../services/BeatSaverService.js';
 import { beatMapParser } from '../../services/BeatMapParser.js';
@@ -34,6 +35,7 @@ export class BeatBornerGame {
 		this.gridHelper = null;
 		this.scoreManager = null;
 		this.pathGenerator = null;
+		this.spaceshipManager = null;
 
 		// État du jeu
 		this.currentMap = null;
@@ -70,6 +72,10 @@ export class BeatBornerGame {
 
 		// Initialiser le helper de grille (AVANT NotesManager pour qu'il puisse l'utiliser)
 		this.gridHelper = new GridHelper(scene, this.cameraController.getCamera(), this.cameraController);
+
+		// Initialiser le vaisseau spatial au centre de la grille
+		this.spaceshipManager = new SpaceshipManager(scene, this.cameraController, this.gridHelper);
+		await this.spaceshipManager.loadSpaceship();
 
 		// Créer le ScoreManager avec callbacks pour l'UI
 		this.scoreManager = new ScoreManager({
@@ -129,6 +135,11 @@ export class BeatBornerGame {
 	 */
 	setupInputHandling() {
 		this.inputManager.onKeyPress((x, y, key) => {
+			// Déplacer le vaisseau vers la position pressée
+			if (this.spaceshipManager) {
+				this.spaceshipManager.moveToGridPosition(x, y);
+			}
+
 			// Animer le carré de la grille
 			if (this.gridHelper) {
 				this.gridHelper.pulseGridSquare(x, y);
@@ -156,6 +167,11 @@ export class BeatBornerGame {
 		// Mettre à jour la grille
 		if (this.gridHelper) {
 			this.gridHelper.updateGridPosition();
+		}
+
+		// Mettre à jour le vaisseau spatial (animation de vague)
+		if (this.spaceshipManager) {
+			this.spaceshipManager.update();
 		}
 
 		// Mettre à jour le timer du délai audio
@@ -482,6 +498,7 @@ export class BeatBornerGame {
 	dispose() {
 		if (this.inputManager) this.inputManager.dispose();
 		if (this.audioManager) this.audioManager.dispose();
+		if (this.spaceshipManager) this.spaceshipManager.dispose();
 		if (this.sceneManager) this.sceneManager.dispose();
 	}
 }
