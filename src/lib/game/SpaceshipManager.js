@@ -26,6 +26,10 @@ export class SpaceshipManager {
 		// Suivi des touches actives pour gérer les notes multiples
 		this.activeInputs = new Map(); // gridX_gridY -> timestamp
 		this.inputTimeout = 200; // ms - durée pendant laquelle un input reste actif
+
+		// Rotation pour l'effet de banking (inclinaison dans les virages)
+		this.tiltAngle = 0; // Angle d'inclinaison actuel (radians)
+		this.maxTiltAngle = Math.PI / 8; // Inclinaison max (22.5°)
 	}
 
 	/**
@@ -162,9 +166,21 @@ export class SpaceshipManager {
 	update() {
 		if (!this.spaceshipContainer) return;
 
+		// Calculer la vitesse de déplacement (pour l'effet de banking)
+		const velocityX = (this.targetOffset.x - this.currentOffset.x) * this.moveSpeed;
+		const velocityY = (this.targetOffset.y - this.currentOffset.y) * this.moveSpeed;
+
 		// Interpolation smooth vers la position cible
-		this.currentOffset.x += (this.targetOffset.x - this.currentOffset.x) * this.moveSpeed;
-		this.currentOffset.y += (this.targetOffset.y - this.currentOffset.y) * this.moveSpeed;
+		this.currentOffset.x += velocityX;
+		this.currentOffset.y += velocityY;
+
+		// Calculer l'angle d'inclinaison basé sur la vitesse horizontale
+		// Négatif car on veut s'incliner dans la direction du mouvement
+		const targetTiltAngle = -velocityX * 15; // Multiplier par un facteur pour amplifier l'effet
+		const clampedTiltAngle = Math.max(-this.maxTiltAngle, Math.min(this.maxTiltAngle, targetTiltAngle));
+
+		// Interpolation smooth de l'angle d'inclinaison
+		this.tiltAngle += (clampedTiltAngle - this.tiltAngle) * 0.2;
 
 		// Animation de vague sinusoïdale lente
 		this.waveOffset += this.waveSpeed;
@@ -190,6 +206,12 @@ export class SpaceshipManager {
 
 			// Orienter le CONTENEUR dans la direction de la caméra + offset de rotation du modèle
 			this.spaceshipContainer.rotation.y = Math.atan2(cameraForward.x, cameraForward.z) + this.baseRotationY;
+
+			// Appliquer l'inclinaison (banking) sur l'axe Z (roulis)
+			this.spaceshipContainer.rotation.z = this.tiltAngle;
+
+			// Légère inclinaison avant/arrière basée sur le mouvement vertical
+			this.spaceshipContainer.rotation.x = velocityY * 5;
 		} else {
 			// Fallback: position fixe avec vague et offset
 			this.spaceshipContainer.position.set(
@@ -197,6 +219,10 @@ export class SpaceshipManager {
 				this.basePosition.y + this.currentOffset.y + yOffset,
 				this.basePosition.z
 			);
+
+			// Appliquer l'inclinaison même en fallback
+			this.spaceshipContainer.rotation.z = this.tiltAngle;
+			this.spaceshipContainer.rotation.x = velocityY * 5;
 		}
 	}
 
