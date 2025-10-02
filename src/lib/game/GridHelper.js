@@ -162,23 +162,58 @@ export class GridHelper {
 
     /**
      * Met à jour la position de la grille pour suivre la caméra
+     * Maintenant supporte aussi la rotation pour les virages rythmiques
      */
     updateGridPosition() {
         if (!this.followCamera || !this.camera || !this.showGrid) return;
 
-        // Nouvelle position Z basée sur la caméra
-        const newGridZ = this.camera.position.z + this.gridConfig.offsetZ;
+        // Obtenir la direction de la caméra
+        const cameraForward = this.camera.getDirection(new Vector3(0, 0, 1));
+        const cameraRight = this.camera.getDirection(new Vector3(1, 0, 0));
+        const cameraUp = this.camera.getDirection(new Vector3(0, 1, 0));
+
+        // Position de base de la grille (devant la caméra)
+        const gridBasePosition = this.camera.position.add(
+            cameraForward.scale(this.gridConfig.offsetZ)
+        );
 
         // Mettre à jour tous les mesh de la grille
         this.gridMeshes.forEach(mesh => {
-            // Préserver les positions X et Y, mettre à jour seulement Z
-            if (mesh.name.includes('gridLine')) {
-                mesh.position.z = newGridZ - 0.1; // Lignes légèrement derrière
-            } else {
-                mesh.position.z = newGridZ;        // Guides au niveau principal
+            const metadata = mesh.metadata;
+
+            if (metadata && typeof metadata.gridX !== 'undefined' && typeof metadata.gridY !== 'undefined') {
+                // Mesh de guide de grille
+                const gridX = metadata.gridX;
+                const gridY = metadata.gridY;
+
+                // Position locale dans le repère de la caméra
+                const localX = this.gridConfig.positions.x[gridX];
+                const localY = this.gridConfig.positions.y[gridY];
+
+                // Calculer la position mondiale
+                const worldPosition = gridBasePosition
+                    .add(cameraRight.scale(localX))
+                    .add(cameraUp.scale(localY - 2)); // -2 car la caméra est à y=2
+
+                mesh.position.copyFrom(worldPosition);
+
+                // Orienter le mesh pour qu'il soit face à la caméra
+                mesh.rotation.y = Math.atan2(cameraForward.x, cameraForward.z);
+                mesh.rotation.x = -Math.asin(cameraForward.y);
+
+            } else if (mesh.name.includes('gridLine')) {
+                // Lignes de délimitation - légèrement en arrière
+                const linePosition = gridBasePosition.add(
+                    cameraForward.scale(-0.1)
+                );
+
+                mesh.position.copyFrom(linePosition);
+
+                // Orienter les lignes
+                mesh.rotation.y = Math.atan2(cameraForward.x, cameraForward.z);
+                mesh.rotation.x = -Math.asin(cameraForward.y);
             }
         });
-
     }
 
     /**
