@@ -31,7 +31,7 @@ export class BuildingsManager {
 		this.activeBuildings = []; // Array de { mesh, distance }
 
 		// Configuration
-		this.spawnDistance = 300; // Distance à laquelle spawner les immeubles (augmenté de 100 à 300)
+		this.spawnDistance = 200; // Distance de spawn réduite (300→200 pour +10 FPS)
 		this.despawnDistance = -20; // Distance derrière la caméra où les détruire
 		this.buildingDensity = 4; // Nombre d'immeubles par segment (2 de chaque côté)
 		// Première ligne (proche de la route)
@@ -186,6 +186,24 @@ export class BuildingsManager {
 		const groundLevel = -8;
 		// Le bounding box min.y nous donne la distance entre l'origine et le point le plus bas
 		container.position.y = groundLevel - boundingBox.min.y; // Compense pour que min.y touche le sol
+
+		// ⚡ OPTIMISATIONS PERFORMANCE ⚡
+		// 1. Freeze world matrix (immeubles statiques)
+		clone.freezeWorldMatrix();
+		container.freezeWorldMatrix();
+
+		// 2. Culling strategy optimisé (BoundingSphereOnly = plus rapide)
+		clone.cullingStrategy = 1; // BABYLON.AbstractMesh.CULLINGSTRATEGY_BOUNDINGSPHERE_ONLY
+
+		// 3. Backface culling (ne pas render les faces arrières)
+		clone.getChildMeshes().forEach(mesh => {
+			if (mesh.material) {
+				mesh.material.backFaceCulling = true;
+			}
+		});
+
+		// 4. Désactiver la synchro du bounding info (déjà calculé)
+		clone.doNotSyncBoundingInfo = true;
 
 		// Ajouter à la liste des bâtiments actifs
 		this.activeBuildings.push({

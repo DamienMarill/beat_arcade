@@ -101,14 +101,11 @@ export class TunnelGenerator {
 	}
 
 	/**
-	 * Crée un sol continu (segments individuels) qui suit le chemin
-	 * Positionné 15m en dessous du joueur (Y=-13 car joueur à Y=2)
-	 * Utilise des segments plats pour éviter le z-fighting des ribbons
+	 * Crée un sol simple (grande plaque au sol)
+	 * Positionné à Y=-8 pour être au niveau du sol du tunnel
 	 */
 	createContinuousGround() {
-		if (!this.pathGenerator) return;
-
-		// Créer le matériau béton partagé par tous les segments
+		// Créer le matériau béton
 		this.groundMaterial = new StandardMaterial('groundMat', this.scene);
 
 		// Créer une texture procédurale de béton
@@ -144,52 +141,27 @@ export class TunnelGenerator {
 		texture.update();
 
 		this.groundMaterial.diffuseTexture = texture;
-		this.groundMaterial.diffuseTexture.uScale = 5; // Répéter la texture
-		this.groundMaterial.diffuseTexture.vScale = 5;
-		this.groundMaterial.specularColor = new Color3(0.1, 0.1, 0.1); // Peu de brillance
+		this.groundMaterial.diffuseTexture.uScale = 20; // Répéter beaucoup
+		this.groundMaterial.diffuseTexture.vScale = 20;
+		this.groundMaterial.specularColor = new Color3(0.1, 0.1, 0.1);
 		this.groundMaterial.ambientColor = new Color3(0.3, 0.3, 0.3);
 		this.groundMaterial.backFaceCulling = true;
 
-		// Créer des segments de sol
-		const pathPoints = this.pathGenerator.getPoints();
-		const groundWidth = 55; // Largeur du sol
-		const segmentLength = 15; // Longueur de chaque segment
-		const step = 10; // Un segment tous les 10 points
+		// Créer une GROSSE plaque simple
+		const ground = CreateGround('groundPlane', {
+			width: 200,  // Très large
+			height: 2000 // Très longue
+		}, this.scene);
 
-		for (let i = 0; i < pathPoints.length - step; i += step) {
-			const point = pathPoints[i];
-			const nextPoint = pathPoints[Math.min(i + step, pathPoints.length - 1)];
+		ground.position.y = -8;
+		ground.position.z = 1000; // Centrée sur le parcours
+		ground.material = this.groundMaterial;
+		ground.cullingStrategy = 1;
+		ground.freezeWorldMatrix();
 
-			// Calculer la tangente (direction du chemin)
-			const tangent = nextPoint.subtract(point).normalize();
+		this.groundSegments.push(ground);
 
-			// Vecteur perpendiculaire (droite)
-			const right = new Vector3(tangent.z, 0, -tangent.x).normalize();
-
-			// Position du centre du segment à Y=-13
-			const centerPos = new Vector3(point.x, -8, point.z);
-
-			// Créer un ground plane individuel
-			const segment = CreateGround(`groundSeg_${i}`, {
-				width: groundWidth,
-				height: segmentLength
-			}, this.scene);
-
-			// Positionner le segment
-			segment.position.copyFrom(centerPos);
-
-			// Orienter selon la tangente du chemin
-			const angle = Math.atan2(tangent.x, tangent.z);
-			segment.rotation.y = angle;
-
-			// Appliquer le matériau partagé
-			segment.material = this.groundMaterial;
-
-			// Stocker le segment
-			this.groundSegments.push(segment);
-		}
-
-		console.log('✅ Sol créé avec', this.groundSegments.length, 'segments individuels');
+		console.log('✅ Sol plaque créé (200×2000 unités)');
 	}
 
 	/**
