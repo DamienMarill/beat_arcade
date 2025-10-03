@@ -1,4 +1,4 @@
-import { MeshBuilder, StandardMaterial, Color3, CreateGround, Vector3, Quaternion, Curve3, DynamicTexture } from '@babylonjs/core';
+import { MeshBuilder, StandardMaterial, Color3, CreateGround, Vector3, Quaternion, Curve3, DynamicTexture, FresnelParameters } from '@babylonjs/core';
 
 /**
  * Génère et gère les segments du tunnel infini
@@ -74,10 +74,20 @@ export class TunnelGenerator {
 			rightRailPoints.push(rightPoint);
 		}
 
-		// Créer le matériau des rails
+		// Créer le matériau des rails avec effet néon fresnel
 		this.railMaterial = new StandardMaterial('railMat', this.scene);
-		this.railMaterial.emissiveColor = new Color3(1, 0.3, 0.8);
-		this.railMaterial.diffuseColor = new Color3(0.5, 0.1, 0.4);
+		this.railMaterial.diffuseColor = new Color3(0.3, 0.05, 0.2); // Base sombre magenta
+		this.railMaterial.emissiveColor = new Color3(1, 0.3, 0.8); // Magenta vif émissif
+		this.railMaterial.specularColor = new Color3(1, 0.5, 1); // Reflets magenta
+		this.railMaterial.specularPower = 32;
+
+		// Fresnel glow (effet néon sur les bords)
+		this.railMaterial.emissiveFresnelParameters = new FresnelParameters();
+		this.railMaterial.emissiveFresnelParameters.bias = 0.1;
+		this.railMaterial.emissiveFresnelParameters.power = 2;
+		this.railMaterial.emissiveFresnelParameters.leftColor = Color3.Black();
+		this.railMaterial.emissiveFresnelParameters.rightColor = new Color3(1, 0.3, 0.8); // Magenta intense
+
 		this.railMaterials.push(this.railMaterial);
 
 		// Créer les tubes pour les rails

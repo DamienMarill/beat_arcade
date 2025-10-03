@@ -84,7 +84,7 @@ export class NotesManager {
 	}
 
 	/**
-	 * Crée une note 3D
+	 * Crée une note 3D avec matériau néon émissif
 	 */
 	createNote(noteData, index) {
 		const note = MeshBuilder.CreateBox(`note_${index}`, {
@@ -93,21 +93,23 @@ export class NotesManager {
 			depth: GameConfig.noteSize.depth
 		}, this.scene);
 
-		// Matériau selon le type
+		// Matériau néon émissif selon le type
 		const material = new StandardMaterial(`noteMat_${index}`, this.scene);
+
 		if (noteData.type === 0) {
-			// Rouge
-			const red = GameConfig.colors.red;
-			material.diffuseColor = new Color3(...red.diffuse);
-			material.emissiveColor = new Color3(...red.emissive);
+			// Rouge néon
+			material.diffuseColor = new Color3(0.2, 0, 0); // Base sombre
+			material.emissiveColor = new Color3(1, 0, 0); // Rouge vif émissif
+			material.specularColor = new Color3(1, 0.5, 0.5); // Reflet rouge
 		} else {
-			// Bleu
-			const blue = GameConfig.colors.blue;
-			material.diffuseColor = new Color3(...blue.diffuse);
-			material.emissiveColor = new Color3(...blue.emissive);
+			// Bleu/Cyan néon
+			material.diffuseColor = new Color3(0, 0.1, 0.3); // Base sombre
+			material.emissiveColor = new Color3(0, 0.6, 1); // Cyan vif émissif
+			material.specularColor = new Color3(0.5, 0.8, 1); // Reflet cyan
 		}
 
-		material.emissiveIntensity = GameConfig.emissiveIntensity;
+		material.specularPower = 64; // Reflets nets
+		material.alpha = 1.0; // Opaque
 		note.material = material;
 
 		// Animation de rotation

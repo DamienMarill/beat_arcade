@@ -330,6 +330,108 @@ export const GameConfig = {
 		 * - 15.0 = moins de détails
 		 */
 		segmentLength: 1.0
+	},
+
+	// ═══════════════════════════════════════════════════
+	// POST-PROCESSING NÉON (PHASE 1)
+	// ═══════════════════════════════════════════════════
+
+	/**
+	 * Configuration du post-processing pour style néon futuriste
+	 * ⚠️ MODE PERFORMANCE: Effets désactivés pour maintenir 60 FPS
+	 */
+	postProcessing: {
+		/**
+		 * Active/désactive tous les effets de post-processing
+		 */
+		enabled: true,
+
+		/**
+		 * Bloom (effet glow néon principal)
+		 * ⚠️ DÉSACTIVÉ: Trop gourmand (passe de 60 à 18 FPS)
+		 */
+		bloom: {
+			enabled: false,     // DÉSACTIVÉ pour performances
+			threshold: 0.8,
+			weight: 0.6,
+			kernel: 32,
+			scale: 0.5
+		},
+
+		/**
+		 * Chromatic Aberration (effet vitesse/distorsion)
+		 * ⚠️ DÉSACTIVÉ: Trop gourmand
+		 */
+		chromaticAberration: {
+			enabled: false,     // DÉSACTIVÉ pour performances
+			amount: 12,
+			radialIntensity: 0.5
+		},
+
+		/**
+		 * Image Processing (couleurs et contraste)
+		 * ✅ ACTIF: Très léger, améliore rendu sans impact FPS
+		 */
+		imageProcessing: {
+			contrast: 1.1,      // Contraste léger (0.5-2)
+			exposure: 1.0,      // Exposition normale
+			toneMappingType: 0  // Standard (ACES désactivé)
+		},
+
+		/**
+		 * FXAA (antialiasing rapide)
+		 * ✅ ACTIF: Impact négligeable, améliore netteté
+		 */
+		fxaa: {
+			enabled: true
+		},
+
+		/**
+		 * Sharpen (netteté des contours)
+		 * ⚠️ DÉSACTIVÉ: Pas nécessaire sans bloom
+		 */
+		sharpen: {
+			enabled: false,     // DÉSACTIVÉ pour performances
+			edgeAmount: 0.3,
+			colorAmount: 1.0
+		},
+
+		/**
+		 * MSAA (antialiasing multisampling)
+		 */
+		samples: 2            // Garde 2 pour antialiasing basique
+	},
+
+	/**
+	 * GlowLayer (glow sélectif pour notes/grille)
+	 * ⚠️ DÉSACTIVÉ: Trop gourmand (cause principale 18 FPS)
+	 */
+	glowLayer: {
+		enabled: false,       // DÉSACTIVÉ pour performances
+		intensity: 0.4,
+		textureSize: 256,
+		blurKernelSize: 16
+	},
+
+	/**
+	 * Mode performance automatique
+	 * Ajuste qualité selon FPS
+	 */
+	performance: {
+		/**
+		 * Active mode basse qualité (réduit effets)
+		 */
+		lowQualityMode: false,
+
+		/**
+		 * FPS cible
+		 */
+		targetFPS: 60,
+
+		/**
+		 * Budget GPU max par frame (ms)
+		 */
+		maxFrameTime: 16.67   // ~60 FPS
 	}
 };
 

@@ -121,9 +121,13 @@ export class GridHelper {
     showGridGuides() {
         this.hideGridGuides(); // Nettoyer d'abord
 
+        // Matériau néon cyan lumineux
         const guideMaterial = new StandardMaterial('gridGuideMat', this.scene);
-        guideMaterial.emissiveColor = new Color3(0.2, 0.8, 0.2);
-        guideMaterial.alpha = 0.3;
+        guideMaterial.diffuseColor = new Color3(0, 0.1, 0.2); // Base sombre
+        guideMaterial.emissiveColor = new Color3(0, 1, 1); // Cyan vif émissif
+        guideMaterial.specularColor = new Color3(0.5, 1, 1); // Reflet cyan
+        guideMaterial.specularPower = 32;
+        guideMaterial.alpha = 0.7; // Semi-transparent pour voir à travers
 
         // Positions actives en cercle (selon le mapping des touches)
         const activePositions = [

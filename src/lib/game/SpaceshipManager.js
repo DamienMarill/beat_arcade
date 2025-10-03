@@ -1,4 +1,4 @@
-import { SceneLoader, Vector3, Animation, TransformNode } from '@babylonjs/core';
+import { SceneLoader, Vector3, Animation, TransformNode, PointLight, Color3 } from '@babylonjs/core';
 import '@babylonjs/loaders/glTF';
 
 /**
@@ -12,6 +12,7 @@ export class SpaceshipManager {
 		this.gridHelper = gridHelper;
 		this.spaceshipContainer = null; // Conteneur pour contrôler position/rotation
 		this.spaceshipModel = null; // Le modèle 3D lui-même
+		this.spaceshipLight = null; // Lumière émise par le vaisseau
 		this.basePosition = new Vector3(0, 2.0, 0); // Centre de la grille
 		this.baseRotationY = Math.PI / 2; // Rotation de base du modèle (+90°)
 		this.waveOffset = 0;
@@ -69,11 +70,31 @@ export class SpaceshipManager {
 				const scale = targetWidth / currentWidth;
 				this.spaceshipModel.scaling.setAll(scale);
 
+				// Créer une lumière cyan/bleu émise par le vaisseau
+				this.createSpaceshipLight();
+
 				console.log('✅ Vaisseau chargé et positionné au centre de la grille');
 			}
 		} catch (error) {
 			console.error('❌ Erreur chargement spaceship.glb:', error);
 		}
+	}
+
+	/**
+	 * Crée une lumière point cyan/bleu émise par le vaisseau
+	 */
+	createSpaceshipLight() {
+		if (!this.spaceshipContainer) return;
+
+		// PointLight cyan/bleu attachée au vaisseau
+		this.spaceshipLight = new PointLight('spaceshipLight', new Vector3(0, 0, 0), this.scene);
+		this.spaceshipLight.diffuse = new Color3(0.3, 0.7, 1.0); // Cyan/bleu
+		this.spaceshipLight.specular = new Color3(0.5, 0.8, 1.0); // Reflets cyan
+		this.spaceshipLight.intensity = 0.8; // Intensité modérée
+		this.spaceshipLight.range = 8; // Portée de 8 unités
+		this.spaceshipLight.parent = this.spaceshipContainer; // Suit le vaisseau
+
+		console.log('✨ Lumière cyan créée pour le vaisseau');
 	}
 
 	/**
@@ -230,6 +251,10 @@ export class SpaceshipManager {
 	 * Nettoie les ressources
 	 */
 	dispose() {
+		if (this.spaceshipLight) {
+			this.spaceshipLight.dispose();
+			this.spaceshipLight = null;
+		}
 		if (this.spaceshipModel) {
 			this.spaceshipModel.dispose();
 			this.spaceshipModel = null;

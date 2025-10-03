@@ -4,6 +4,7 @@ import { TunnelGenerator } from './TunnelGenerator.js';
 import { NotesManager } from './NotesManager.js';
 import { AudioManager } from './AudioManager.js';
 import { LightingManager } from './LightingManager.js';
+import { PostProcessingManager } from './PostProcessingManager.js';
 import { InputManager } from './InputManager.js';
 import GridHelper from './GridHelper.js';
 import { ScoreManager } from './ScoreManager.js';
@@ -32,6 +33,7 @@ export class BeatBornerGame {
 		this.notesManager = null;
 		this.audioManager = null;
 		this.lightingManager = null;
+		this.postProcessingManager = null;
 		this.inputManager = null;
 		this.gridHelper = null;
 		this.scoreManager = null;
@@ -46,6 +48,11 @@ export class BeatBornerGame {
 		this.isPaused = false;
 		this.startTime = 0;
 		this.musicEndTime = 0; // Pour gérer le délai de 3s après la fin
+
+		// Beat tracking pour synchronisation lumières
+		this.lastBeatTime = -1; // Dernier beat détecté
+		this.beatInterval = 0; // Intervalle entre beats (60/BPM)
+		this.nextBeatIndex = 0; // Prochain beat à déclencher
 
 		this.init();
 	}
@@ -64,6 +71,10 @@ export class BeatBornerGame {
 		// Créer les contrôleurs (audioManager en premier pour NotesManager)
 		this.cameraController = new CameraController(scene);
 		this.lightingManager = new LightingManager(scene);
+
+		// Post-processing DÉSACTIVÉ temporairement pour diagnostiquer les 45 FPS
+		// this.postProcessingManager = new PostProcessingManager(scene, this.cameraController.getCamera());
+
 		this.tunnelGenerator = new TunnelGenerator(scene, this.cameraController);
 		this.audioManager = new AudioManager({
 			onMusicEnded: () => {
@@ -107,6 +118,20 @@ export class BeatBornerGame {
 			onNoteHit: (grade, timeOffset, gridX, gridY) => {
 				// Enregistrer le hit dans le ScoreManager
 				this.scoreManager.registerHit(grade);
+
+				// Pulse de lumière selon le grade
+				if (grade === 'perfect') {
+					// Perfect : pulse fort des deux lumières
+					this.lightingManager.pulseAllAccentLights(2.0);
+				} else if (grade === 'great') {
+					// Great : pulse moyen d'une lumière selon la position
+					const lightIndex = gridX <= 1 ? 0 : 1; // Gauche (cyan) ou droite (magenta)
+					this.lightingManager.pulseAccentLight(lightIndex, 1.5);
+				} else {
+					// Good : pulse léger
+					const lightIndex = gridX <= 1 ? 0 : 1;
+					this.lightingManager.pulseAccentLight(lightIndex, 1.0);
+				}
 
 				// Callback vers l'UI si nécessaire
 				if (this.callbacks.onNoteHit) {
@@ -160,6 +185,37 @@ export class BeatBornerGame {
 	}
 
 	/**
+	 * Détecte les beats et pulse les lumières en synchronisation
+	 */
+	updateBeatDetection() {
+		if (this.beatInterval <= 0) return; // Pas de BPM configuré
+
+		const currentTime = this.audioManager.getCurrentTime();
+
+		// Ignorer pendant le délai de préparation (temps négatif)
+		if (currentTime < 0) return;
+
+		// Calculer le prochain beat attendu
+		const nextBeatTime = this.nextBeatIndex * this.beatInterval;
+
+		// Si on a atteint ou dépassé le prochain beat
+		if (currentTime >= nextBeatTime) {
+			// Pulse des lumières d'accentuation
+			// Alterner entre cyan (0) et magenta (1) selon l'index pair/impair
+			const lightIndex = this.nextBeatIndex % 2;
+			this.lightingManager.pulseAccentLight(lightIndex, 0.8);
+
+			// Pulse toutes les 4 beats (temps fort)
+			if (this.nextBeatIndex % 4 === 0) {
+				this.lightingManager.pulseAllAccentLights(1.2);
+			}
+
+			this.lastBeatTime = currentTime;
+			this.nextBeatIndex++;
+		}
+	}
+
+	/**
 	 * Boucle de mise à jour principale
 	 */
 	update() {
@@ -188,6 +244,9 @@ export class BeatBornerGame {
 		// Mettre à jour le timer du délai audio
 		if (this.isPlaying) {
 			this.audioManager.updateDelayTimer();
+
+			// Détection des beats pour pulse lumières
+			this.updateBeatDetection();
 
 			// Mettre à jour les notes (synchronisées avec l'audio)
 			if (this.gameplayData) {
@@ -259,6 +318,11 @@ export class BeatBornerGame {
 			const parsedData = beatMapParser.parseDifficulty(difficultyData);
 
 			this.gameplayData = beatMapParser.optimizeForGameplay(parsedData, this.currentMap.metadata.bpm);
+
+			// Initialiser le beat tracking
+			const bpm = this.currentMap.metadata.bpm;
+			this.beatInterval = 60 / bpm; // Intervalle en secondes entre chaque beat
+			console.log(`🎵 Beat tracking initialisé: BPM ${bpm}, intervalle ${this.beatInterval.toFixed(3)}s`);
 
 			// Charger l'audio
 			await this.loadAudioFromZip(zipFiles);
@@ -390,6 +454,10 @@ export class BeatBornerGame {
 		this.startTime = performance.now();
 		this.isPlaying = true;
 
+		// Reset le beat tracking
+		this.nextBeatIndex = 0;
+		this.lastBeatTime = -1;
+
 		// Activer la caméra
 		this.cameraController.start();
 
@@ -512,6 +580,8 @@ export class BeatBornerGame {
 	dispose() {
 		if (this.inputManager) this.inputManager.dispose();
 		if (this.audioManager) this.audioManager.dispose();
+		// if (this.postProcessingManager) this.postProcessingManager.dispose();
+		if (this.lightingManager) this.lightingManager.dispose();
 		if (this.spaceshipManager) this.spaceshipManager.dispose();
 		if (this.buildingsManager) this.buildingsManager.dispose();
 		if (this.sceneManager) this.sceneManager.dispose();
