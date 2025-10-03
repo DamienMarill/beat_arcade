@@ -9,6 +9,7 @@ import GridHelper from './GridHelper.js';
 import { ScoreManager } from './ScoreManager.js';
 import { PathGenerator } from './PathGenerator.js';
 import { SpaceshipManager } from './SpaceshipManager.js';
+import { BuildingsManager } from './BuildingsManager.js';
 import { GameConfig } from './GameConfig.js';
 import { beatSaverService } from '../../services/BeatSaverService.js';
 import { beatMapParser } from '../../services/BeatMapParser.js';
@@ -36,6 +37,7 @@ export class BeatBornerGame {
 		this.scoreManager = null;
 		this.pathGenerator = null;
 		this.spaceshipManager = null;
+		this.buildingsManager = null;
 
 		// État du jeu
 		this.currentMap = null;
@@ -76,6 +78,10 @@ export class BeatBornerGame {
 		// Initialiser le vaisseau spatial au centre de la grille
 		this.spaceshipManager = new SpaceshipManager(scene, this.cameraController, this.gridHelper);
 		await this.spaceshipManager.loadSpaceship();
+
+		// Initialiser le gestionnaire d'immeubles (sera configuré après le pathGenerator)
+		this.buildingsManager = new BuildingsManager(scene, this.cameraController, null);
+		await this.buildingsManager.loadBuildingModels();
 
 		// Créer le ScoreManager avec callbacks pour l'UI
 		this.scoreManager = new ScoreManager({
@@ -174,6 +180,11 @@ export class BeatBornerGame {
 			this.spaceshipManager.update();
 		}
 
+		// Mettre à jour les immeubles (spawn/despawn)
+		if (this.buildingsManager) {
+			this.buildingsManager.update();
+		}
+
 		// Mettre à jour le timer du délai audio
 		if (this.isPlaying) {
 			this.audioManager.updateDelayTimer();
@@ -259,11 +270,14 @@ export class BeatBornerGame {
 				this.currentMap.metadata.bpm
 			);
 
-			// Connecter le chemin à la caméra, au tunnel, à la grille et aux notes
+			// Connecter le chemin à la caméra, au tunnel, à la grille, aux notes et aux immeubles
 			this.cameraController.setPathGenerator(this.pathGenerator);
 			this.tunnelGenerator.setPathGenerator(this.pathGenerator);
 			this.gridHelper.setPathGenerator(this.pathGenerator);
 			this.notesManager.setPathGenerator(this.pathGenerator);
+			if (this.buildingsManager) {
+				this.buildingsManager.pathGenerator = this.pathGenerator;
+			}
 
 			// Créer les notes
 			this.notesManager.setGameplayData(this.gameplayData);
@@ -499,6 +513,7 @@ export class BeatBornerGame {
 		if (this.inputManager) this.inputManager.dispose();
 		if (this.audioManager) this.audioManager.dispose();
 		if (this.spaceshipManager) this.spaceshipManager.dispose();
+		if (this.buildingsManager) this.buildingsManager.dispose();
 		if (this.sceneManager) this.sceneManager.dispose();
 	}
 }

@@ -167,7 +167,7 @@ export class TunnelGenerator {
 			const right = new Vector3(tangent.z, 0, -tangent.x).normalize();
 
 			// Position du centre du segment à Y=-13
-			const centerPos = new Vector3(point.x, -13, point.z);
+			const centerPos = new Vector3(point.x, -8, point.z);
 
 			// Créer un ground plane individuel
 			const segment = CreateGround(`groundSeg_${i}`, {

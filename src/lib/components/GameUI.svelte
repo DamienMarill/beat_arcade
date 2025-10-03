@@ -1,4 +1,6 @@
 <script>
+	import { onMount, onDestroy } from 'svelte';
+
 	export let visible = false;
 	export let songName = 'Loading...';
 	export let gameTime = '00:00';
@@ -6,9 +8,52 @@
 	export let score = 0;
 	export let combo = 0;
 	export let multiplier = 1.0;
+
+	// FPS Counter
+	let fps = 0;
+	let frameCount = 0;
+	let lastTime = performance.now();
+	let fpsInterval;
+
+	onMount(() => {
+		// Mettre à jour le FPS chaque seconde
+		fpsInterval = setInterval(() => {
+			const currentTime = performance.now();
+			const deltaTime = (currentTime - lastTime) / 1000;
+			fps = Math.round(frameCount / deltaTime);
+			frameCount = 0;
+			lastTime = currentTime;
+		}, 1000);
+
+		// Compter les frames
+		const countFrame = () => {
+			frameCount++;
+			requestAnimationFrame(countFrame);
+		};
+		countFrame();
+	});
+
+	onDestroy(() => {
+		if (fpsInterval) clearInterval(fpsInterval);
+	});
 </script>
 
 {#if visible}
+	<!-- FPS Counter (top-right) -->
+	<div class="fixed top-5 right-5 z-50">
+		<div class="card bg-base-300/90 border border-primary/50 shadow-xl backdrop-blur-sm">
+			<div class="card-body p-3">
+				<div class="stat px-0 py-0">
+					<div class="stat-title text-xs opacity-70">FPS</div>
+					<div class="stat-value text-2xl font-mono font-bold" class:text-success={fps >= 60} class:text-warning={fps >= 30 && fps < 60} class:text-error={fps < 30}>
+						{fps}
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Game Info (top-left) -->
 	<div class="fixed top-5 left-5 z-50">
 		<div class="card bg-base-200/90 border border-accent/50 shadow-xl backdrop-blur-sm">
 			<div class="card-body p-4">
