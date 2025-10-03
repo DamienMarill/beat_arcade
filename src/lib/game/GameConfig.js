@@ -205,20 +205,20 @@ export const GameConfig = {
 	 */
 	keyBindings: {
 		// Ligne 0 (bas) - y=0: x, g, k, x
-		'g': { x: 1, y: 0 },  // Colonne centre-gauche
-		'k': { x: 2, y: 0 },  // Colonne centre-droite
+		'l': { x: 1, y: 0 },  // Colonne centre-gauche
+		'f': { x: 2, y: 0 },  // Colonne centre-droite
 
 		// Ligne 1 - y=1: f, x, x, l
-		'f': { x: 0, y: 1 },  // Colonne gauche
-		'l': { x: 3, y: 1 },  // Colonne droite
+		'k': { x: 0, y: 1 },  // Colonne gauche
+		'g': { x: 3, y: 1 },  // Colonne droite
 
 		// Ligne 2 - y=2: r, x, x, o
-		'r': { x: 0, y: 2 },  // Colonne gauche
-		'o': { x: 3, y: 2 },  // Colonne droite
+		'i': { x: 0, y: 2 },  // Colonne gauche
+		't': { x: 3, y: 2 },  // Colonne droite
 
 		// Ligne 3 (haut) - y=3: x, t, i, x
-		't': { x: 1, y: 3 },  // Colonne centre-gauche
-		'i': { x: 2, y: 3 }   // Colonne centre-droite
+		'o': { x: 1, y: 3 },  // Colonne centre-gauche
+		'r': { x: 2, y: 3 }   // Colonne centre-droite
 	},
 
 	// ═══════════════════════════════════════════════════

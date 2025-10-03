@@ -42,7 +42,10 @@
       "mcp__playwright__browser_evaluate",
       "mcp__serena__replace_regex",
       "mcp__serena__find_symbol",
-      "Bash(npm run check:*)"
+      "Bash(npm run check:*)",
+      "WebFetch(domain:waelyasmina.net)",
+      "WebFetch(domain:tympanus.net)",
+      "WebFetch(domain:hexgl.bkcore.com)"
     ],
     "deny": [],
     "ask": []
